@@ -1,3 +1,5 @@
+#include "opengl.h"
+
 typedef struct App App;
 struct App
 {
@@ -16,6 +18,7 @@ Update(Platform *platform_)
     if(platform->initialized == 0)
     {
         platform->initialized = 1;
+        LoadAllOpenGLProcedures(platform);
     }
     
     glClearColor(1, 0, 0, 1);
