@@ -1,27 +1,27 @@
+#include "language_layer.h"
 #include "opengl.h"
 
-typedef struct App App;
-struct App
-{
-    int app_data_goes_here;
-};
-
-global App *app = 0;
-global Platform *platform = 0;
-
-internal void
-Update(Platform *platform_)
+APP_PROC
+APPLICATION_PERMANENT_LOAD(PermanentLoad)
 {
     platform = platform_;
-    app = platform->permanent_storage;
-    
-    if(platform->initialized == 0)
-    {
-        platform->initialized = 1;
-        LoadAllOpenGLProcedures(platform);
-    }
-    
+    LoadAllOpenGLProcedures();
+}
+
+APP_PROC
+APPLICATION_HOT_LOAD(HotLoad)
+{
+    platform = platform_;
+}
+
+APP_PROC
+APPLICATION_HOT_UNLOAD(HotUnload)
+{}
+
+APP_PROC
+APPLICATION_UPDATE(Update)
+{
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    platform->SwapBuffers();
+    platform->RefreshScreen();
 }

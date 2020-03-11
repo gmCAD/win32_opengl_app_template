@@ -1,4 +1,5 @@
 #define WINDOW_TITLE "Application"
+#define APP_FILENAME "app"
 #define DEFAULT_WINDOW_WIDTH 1280
 #define DEFAULT_WINDOW_HEIGHT 720
 #define PERMANENT_STORAGE_SIZE Megabytes(64)
