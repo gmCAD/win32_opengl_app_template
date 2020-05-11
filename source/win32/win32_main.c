@@ -18,7 +18,9 @@
 // NOTE(rjf): Headers
 #include "program_options.h"
 #include "language_layer.h"
+#include "platform.h"
 #include "win32_timer.h"
+#include "language_layer.c"
 
 // NOTE(rjf): Globals
 global char global_executable_path[256];
@@ -30,6 +32,19 @@ global Platform global_platform;
 global HDC global_device_context;
 global HINSTANCE global_instance_handle;
 global Win32Timer global_win32_timer = {0};
+#define Win32_MaxGamepads 16
+typedef struct Win32GamepadInput Win32GamepadInput;
+struct Win32GamepadInput
+{
+    b32 connected;
+    v2 joystick_1;
+    v2 joystick_2;
+    f32 trigger_left;
+    f32 trigger_right;
+    i32 button_states[GamepadButton_Max];
+};
+Win32GamepadInput global_gamepads[Win32_MaxGamepads];
+
 
 // NOTE(rjf): Implementations
 #include "win32_utilities.c"
@@ -42,20 +57,50 @@ global Win32Timer global_win32_timer = {0};
 
 //~
 
-typedef enum Win32CursorStyle Win32CursorStyle;
-enum Win32CursorStyle
+typedef enum Win32CursorStyle
 {
-    WIN32_CURSOR_normal,
-    WIN32_CURSOR_horizontal_resize,
-    WIN32_CURSOR_vertical_resize,
-};
+    Win32CursorStyle_Normal,
+    Win32CursorStyle_HorizontalResize,
+    Win32CursorStyle_VerticalResize,
+    Win32CursorStyle_IBar,
+}
+Win32CursorStyle;
 
 global Win32CursorStyle global_cursor_style = 0;
+
+internal v2
+Win32GetMousePosition(HWND window)
+{
+    v2 result = {0};
+    POINT mouse;
+    GetCursorPos(&mouse);
+    ScreenToClient(window, &mouse);
+    result.x = (f32)(mouse.x);
+    result.y = (f32)(mouse.y);
+    return result;
+}
 
 internal LRESULT
 Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param)
 {
-    LRESULT result;
+    LRESULT result = 0;
+    
+    local_persist b32 mouse_hover_active_because_windows_makes_me_cry = 0;
+    
+    KeyModifiers modifiers = 0;
+    if(GetKeyState(VK_CONTROL) & 0x8000)
+    {
+        modifiers |= KeyModifier_Ctrl;
+    }
+    if(GetKeyState(VK_SHIFT) & 0x8000)
+    {
+        modifiers |= KeyModifier_Shift;
+    }
+    if(GetKeyState(VK_MENU) & 0x8000)
+    {
+        modifiers |= KeyModifier_Alt;
+    }
+    
     if(message == WM_CLOSE || message == WM_DESTROY || message == WM_QUIT)
     {
         global_platform.quit = 1;
@@ -63,60 +108,91 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
     }
     else if(message == WM_LBUTTONDOWN)
     {
-        if(!global_platform.left_mouse_down)
-        {
-            global_platform.left_mouse_pressed = 1;
-        }
-        global_platform.left_mouse_down = 1;
+        PlatformPushEvent(MousePressEvent(MouseButton_Left, global_platform.mouse_position));
     }
     else if(message == WM_LBUTTONUP)
     {
-        global_platform.left_mouse_down = 0;
-        global_platform.left_mouse_pressed = 0;
+        PlatformPushEvent(MouseReleaseEvent(MouseButton_Left, global_platform.mouse_position));
     }
     else if(message == WM_RBUTTONDOWN)
     {
-        if(!global_platform.right_mouse_down)
-        {
-            global_platform.right_mouse_pressed = 1;
-        }
-        global_platform.right_mouse_down = 1;
+        PlatformPushEvent(MousePressEvent(MouseButton_Right, global_platform.mouse_position));
     }
     else if(message == WM_RBUTTONUP)
     {
-        global_platform.right_mouse_down = 0;
-        global_platform.right_mouse_pressed = 0;
+        PlatformPushEvent(MouseReleaseEvent(MouseButton_Right, global_platform.mouse_position));
+    }
+    else if(message == WM_MOUSEMOVE)
+    {
+        i16 x_position = LOWORD(l_param);
+        i16 y_position = HIWORD(l_param);
+        v2 last_mouse = global_platform.mouse_position;
+        global_platform.mouse_position = Win32GetMousePosition(window_handle);
+        PlatformPushEvent(MouseMoveEvent(global_platform.mouse_position,
+                                         v2(global_platform.mouse_position.x - last_mouse.x,
+                                            global_platform.mouse_position.y - last_mouse.y)));
+        
+        if(mouse_hover_active_because_windows_makes_me_cry == 0)
+        {
+            mouse_hover_active_because_windows_makes_me_cry = 1;
+            TRACKMOUSEEVENT track_mouse_event = {0};
+            {
+                track_mouse_event.cbSize = sizeof(track_mouse_event);
+                track_mouse_event.dwFlags = TME_LEAVE;
+                track_mouse_event.hwndTrack = window_handle;
+                track_mouse_event.dwHoverTime = HOVER_DEFAULT;
+            }
+            TrackMouseEvent(&track_mouse_event);
+        }
+    }
+    else if(message == WM_MOUSELEAVE)
+    {
+        mouse_hover_active_because_windows_makes_me_cry = 0;
     }
     else if(message == WM_MOUSEWHEEL)
     {
         i16 wheel_delta = HIWORD(w_param);
-        global_platform.mouse_scroll_y = (f32)wheel_delta;
+        PlatformPushEvent(MouseScrollEvent(v2(0, (f32)wheel_delta), modifiers));
     }
     else if(message == WM_MOUSEHWHEEL)
     {
         i16 wheel_delta = HIWORD(w_param);
-        global_platform.mouse_scroll_x = (f32)wheel_delta;
+        PlatformPushEvent(MouseScrollEvent(v2((f32)wheel_delta, 0), modifiers));
     }
     else if(message == WM_SETCURSOR)
     {
-        switch(global_cursor_style)
+        
+        if(global_platform.mouse_position.x >= 1 && global_platform.mouse_position.x <= global_platform.window_size.x-1 &&
+           global_platform.mouse_position.y >= 1 && global_platform.mouse_position.y <= global_platform.window_size.y-1 && mouse_hover_active_because_windows_makes_me_cry)
         {
-            case WIN32_CURSOR_horizontal_resize:
+            switch(global_cursor_style)
             {
-                SetCursor(LoadCursorA(0, IDC_SIZEWE));
-                break;
+                case Win32CursorStyle_HorizontalResize:
+                {
+                    SetCursor(LoadCursorA(0, IDC_SIZEWE));
+                    break;
+                }
+                case Win32CursorStyle_VerticalResize:
+                {
+                    SetCursor(LoadCursorA(0, IDC_SIZENS));
+                    break;
+                }
+                case Win32CursorStyle_IBar:
+                {
+                    SetCursor(LoadCursorA(0, IDC_IBEAM));
+                    break;
+                }
+                case Win32CursorStyle_Normal:
+                {
+                    SetCursor(LoadCursorA(0, IDC_ARROW));
+                    break;
+                }
+                default: break;
             }
-            case WIN32_CURSOR_vertical_resize:
-            {
-                SetCursor(LoadCursorA(0, IDC_SIZENS));
-                break;
-            }
-            case WIN32_CURSOR_normal:
-            {
-                SetCursor(LoadCursorA(0, IDC_ARROW));
-                break;
-            }
-            default: break;
+        }
+        else
+        {
+            result = DefWindowProc(window_handle, message, w_param, l_param);
         }
     }
     else if(message == WM_SYSKEYDOWN || message == WM_SYSKEYUP ||
@@ -132,156 +208,142 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
            (vkey_code >= '0' && vkey_code <= '9'))
         {
             // NOTE(rjf): Letter/number buttons
-            key_input = (vkey_code >= 'A' && vkey_code <= 'Z') ? KEY_a + (vkey_code-'A') : KEY_0 + (vkey_code-'0');
+            key_input = (vkey_code >= 'A' && vkey_code <= 'Z') ? Key_A + (vkey_code-'A') : Key_0 + (vkey_code-'0');
         }
         else
         {
             if(vkey_code == VK_ESCAPE)
             {
-                key_input = KEY_esc;
+                key_input = Key_Esc;
             }
             else if(vkey_code >= VK_F1 && vkey_code <= VK_F12)
             {
-                key_input = KEY_f1 + vkey_code - VK_F1;
+                key_input = Key_F1 + vkey_code - VK_F1;
             }
             else if(vkey_code == VK_OEM_3)
             {
-                key_input = KEY_grave_accent;
+                key_input = Key_GraveAccent;
             }
             else if(vkey_code == VK_OEM_MINUS)
             {
-                key_input = KEY_minus;
+                key_input = Key_Minus;
             }
             else if(vkey_code == VK_OEM_PLUS)
             {
-                key_input = KEY_equal;
+                key_input = Key_Equal;
             }
             else if(vkey_code == VK_BACK)
             {
-                key_input = KEY_backspace;
+                key_input = Key_Backspace;
             }
             else if(vkey_code == VK_TAB)
             {
-                key_input = KEY_tab;
+                key_input = Key_Tab;
             }
             else if(vkey_code == VK_SPACE)
             {
-                key_input = KEY_space;
+                key_input = Key_Space;
             }
             else if(vkey_code == VK_RETURN)
             {
-                key_input = KEY_enter;
+                key_input = Key_Enter;
             }
             else if(vkey_code == VK_CONTROL)
             {
-                key_input = KEY_ctrl;
+                key_input = Key_Ctrl;
+                modifiers &= ~KeyModifier_Ctrl;
             }
             else if(vkey_code == VK_SHIFT)
             {
-                key_input = KEY_shift;
+                key_input = Key_Shift;
+                modifiers &= ~KeyModifier_Shift;
             }
             else if(vkey_code == VK_MENU)
             {
-                key_input = KEY_alt;
+                key_input = Key_Alt;
+                modifiers &= ~KeyModifier_Alt;
             }
             else if(vkey_code == VK_UP)
             {
-                key_input = KEY_up;
+                key_input = Key_Up;
             }
             else if(vkey_code == VK_LEFT)
             {
-                key_input = KEY_left;
+                key_input = Key_Left;
             }
             else if(vkey_code == VK_DOWN)
             {
-                key_input = KEY_down;
+                key_input = Key_Down;
             }
             else if(vkey_code == VK_RIGHT)
             {
-                key_input = KEY_right;
+                key_input = Key_Right;
             }
             else if(vkey_code == VK_DELETE)
             {
-                key_input = KEY_delete;
+                key_input = Key_Delete;
             }
             else if(vkey_code == VK_PRIOR)
             {
-                key_input = KEY_page_up;
+                key_input = Key_PageUp;
             }
             else if(vkey_code == VK_NEXT)
             {
-                key_input = KEY_page_down;
+                key_input = Key_PageDown;
+            }
+            else if(vkey_code == VK_HOME)
+            {
+                key_input = Key_Home;
+            }
+            else if(vkey_code == VK_END)
+            {
+                key_input = Key_End;
+            }
+            else if(vkey_code == VK_OEM_2)
+            {
+                key_input = Key_ForwardSlash;
+            }
+            else if(vkey_code == VK_OEM_PERIOD)
+            {
+                key_input = Key_Period;
+            }
+            else if(vkey_code == VK_OEM_COMMA)
+            {
+                key_input = Key_Comma;
+            }
+            else if(vkey_code == VK_OEM_7)
+            {
+                key_input = Key_Quote;
+            }
+            else if(vkey_code == VK_OEM_4)
+            {
+                key_input = Key_LeftBracket;
+            }
+            else if(vkey_code == VK_OEM_6)
+            {
+                key_input = Key_RightBracket;
             }
         }
         
         if(is_down)
         {
-            if(!global_platform.key_down[key_input])
-            {
-                ++global_platform.key_pressed[key_input];
-            }
-            ++global_platform.key_down[key_input];
-            global_platform.last_key = (i32)key_input;
-            
-            if(key_input == KEY_backspace && global_platform.target_text)
-            {
-                if(global_platform.key_down[KEY_ctrl])
-                {
-                    for(u32 i = global_platform.target_text_edit_pos-2;
-                        i >= 0 && i < global_platform.target_text_max_characters;
-                        --i)
-                    {
-                        if(!i || global_platform.target_text[i-1] == ' ')
-                        {
-                            global_platform.target_text[i] = 0;
-                            global_platform.target_text_edit_pos = i;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    if(global_platform.target_text_edit_pos)
-                    {
-                        // NOTE(rjf): This assumes editing only takes place at
-                        //            the end of the string!!!
-                        global_platform.target_text[--global_platform.target_text_edit_pos] = 0;
-                    }
-                }
-            }
-            else if(key_input == KEY_f4 && global_platform.key_down[KEY_alt])
-            {
-                global_platform.quit = 1;
-            }
+            PlatformPushEvent(KeyPressEvent(key_input, modifiers));
         }
         else
         {
-            if(was_down)
-            {
-                global_platform.key_released[key_input] = 1;
-            }
-            global_platform.key_down[key_input] = 0;
-            global_platform.key_pressed[key_input] = 0;
+            PlatformPushEvent(KeyReleaseEvent(key_input, modifiers));
         }
+        
+        result = DefWindowProc(window_handle, message, w_param, l_param);
     }
     else if(message == WM_CHAR)
     {
         u64 char_input = w_param;
-        if(char_input >= 32 && char_input < 127)
+        if(char_input >= 32 && char_input != VK_RETURN && char_input != VK_ESCAPE &&
+           char_input != 127)
         {
-            if(global_platform.target_text && global_platform.target_text_edit_pos < global_platform.target_text_max_characters - 1)
-            {
-                i8 was_down = !!(l_param & (1 << 30));
-                i8 is_down = !(l_param & (1 << 31));
-                
-                if(is_down)
-                {
-                    global_platform.target_text[global_platform.target_text_edit_pos++] = (i8)char_input;
-                    global_platform.target_text[global_platform.target_text_edit_pos] = 0;
-                }
-            }
+            PlatformPushEvent(CharacterInputEvent(char_input));
         }
-        
     }
     else
     {
@@ -310,19 +372,19 @@ Win32GetCycles(void)
 internal void
 Win32ResetCursor(void)
 {
-    global_cursor_style = WIN32_CURSOR_normal;
+    global_cursor_style = Win32CursorStyle_Normal;
 }
 
 internal void
 Win32SetCursorToHorizontalResize(void)
 {
-    global_cursor_style = WIN32_CURSOR_horizontal_resize;
+    global_cursor_style = Win32CursorStyle_HorizontalResize;
 }
 
 internal void
 Win32SetCursorToVerticalResize(void)
 {
-    global_cursor_style = WIN32_CURSOR_vertical_resize;
+    global_cursor_style = Win32CursorStyle_VerticalResize;
 }
 
 int
@@ -355,8 +417,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         
         // NOTE(rjf): Create DLL filenames
         {
-            wsprintf(global_app_dll_path, "%s%s.dll", global_executable_directory, APP_FILENAME);
-            wsprintf(global_temp_app_dll_path, "%stemp_%s.dll", global_executable_directory, APP_FILENAME);
+            wsprintf(global_app_dll_path, "%s%s.dll", global_executable_directory, ProgramOption_ProgramFilename);
+            wsprintf(global_temp_app_dll_path, "%stemp_%s.dll", global_executable_directory, ProgramOption_ProgramFilename);
         }
         
         GetCurrentDirectory(sizeof(global_working_directory), global_working_directory);
@@ -378,10 +440,10 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         goto quit;
     }
     
-    HWND window_handle = CreateWindow("ApplicationWindowClass", WINDOW_TITLE, WS_OVERLAPPEDWINDOW,
-                                      CW_USEDEFAULT, CW_USEDEFAULT,
-                                      DEFAULT_WINDOW_WIDTH,
-                                      DEFAULT_WINDOW_HEIGHT,
+    HWND window_handle = CreateWindow("ApplicationWindowClass", ProgramOption_WindowTitle,
+                                      WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                                      ProgramOption_DefaultWindowWidth,
+                                      ProgramOption_DefaultWindowHeight,
                                       0, 0, instance, 0);
     
     if(!window_handle)
@@ -423,46 +485,39 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
     
     // NOTE(rjf): Initialize platform
     {
-        global_platform.executable_folder_absolute_path = global_executable_directory;
-        global_platform.executable_absolute_path = global_executable_path;
-        global_platform.working_directory_path = global_working_directory;
+        global_platform.executable_folder_absolute_path = String8FromCString(global_executable_directory);
+        global_platform.executable_absolute_path = String8FromCString(global_executable_path);
+        global_platform.working_directory_path = String8FromCString(global_working_directory);
         
-        u32 permanent_storage_size       = PERMANENT_STORAGE_SIZE;
+        u32 permanent_storage_size       = ProgramOption_DefaultPermanentStorageSize;
         void *permanent_storage          = VirtualAlloc(0, permanent_storage_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
         global_platform.permanent_arena  = MemoryArenaInit(permanent_storage, permanent_storage_size);
-        u32 scratch_storage_size         = SCRATCH_STORAGE_SIZE;
+        u32 scratch_storage_size         = ProgramOption_DefaultScratchStorageSize;
         void *scratch_storage            = VirtualAlloc(0, scratch_storage_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
         global_platform.scratch_arena    = MemoryArenaInit(scratch_storage, scratch_storage_size);
         
         global_platform.quit                      = 0;
         global_platform.vsync                     = 1;
         global_platform.fullscreen                = 0;
-        global_platform.window_width              = DEFAULT_WINDOW_WIDTH;
-        global_platform.window_height             = DEFAULT_WINDOW_HEIGHT;
+        global_platform.window_size.x             = ProgramOption_DefaultWindowWidth;
+        global_platform.window_size.y             = ProgramOption_DefaultWindowHeight;
         global_platform.current_time              = 0.f;
         global_platform.target_frames_per_second  = refresh_rate;
-        
-        global_platform.gamepads = global_platform.gamepad_states_1;
         
         global_platform.sample_out = Win32HeapAlloc(win32_sound_output.samples_per_second * sizeof(f32) * 2);
         global_platform.samples_per_second = win32_sound_output.samples_per_second;
         
         global_platform.OutputError                    = Win32OutputError;
-        global_platform.HeapAlloc                      = Win32HeapAlloc;
-        global_platform.HeapFree                       = Win32HeapFree;
         global_platform.SaveToFile                     = Win32SaveToFile;
         global_platform.AppendToFile                   = Win32AppendToFile;
         global_platform.LoadEntireFile                 = Win32LoadEntireFile;
         global_platform.LoadEntireFileAndNullTerminate = Win32LoadEntireFileAndNullTerminate;
-        global_platform.FreeFileMemory                 = Win32FreeFileMemory;
         global_platform.DeleteFile                     = Win32DeleteFile;
         global_platform.MakeDirectory                  = Win32MakeDirectory;
         global_platform.DoesFileExist                  = Win32DoesFileExist;
         global_platform.DoesDirectoryExist             = Win32DoesDirectoryExist;
         global_platform.CopyFile                       = Win32CopyFile;
-        global_platform.CopyDirectoryRecursively       = Win32CopyDirectoryRecursively;
-        global_platform.PlatformDirectoryListLoad      = Win32PlatformDirectoryListLoad;
-        global_platform.PlatformDirectoryListCleanUp   = Win32PlatformDirectoryListCleanUp;
+        global_platform.ListDirectory                  = Win32PlatformDirectoryListLoad;
         global_platform.GetTime                        = Win32GetTime;
         global_platform.GetCycles                      = Win32GetCycles;
         global_platform.ResetCursor                    = Win32ResetCursor;
@@ -515,8 +570,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         {
             RECT client_rect;
             GetClientRect(window_handle, &client_rect);
-            global_platform.window_width = client_rect.right - client_rect.left;
-            global_platform.window_height = client_rect.bottom - client_rect.top;
+            global_platform.window_size.x = client_rect.right - client_rect.left;
+            global_platform.window_size.y = client_rect.bottom - client_rect.top;
         }
         
         // NOTE(rjf): Update input data (post-event)
@@ -525,10 +580,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
             POINT mouse;
             GetCursorPos(&mouse);
             ScreenToClient(window_handle, &mouse);
-            global_platform.mouse_x = (f32)(mouse.x);
-            global_platform.mouse_y = (f32)(mouse.y);
             Win32UpdateXInput(&global_platform);
-            global_platform.target_text = 0;
             global_platform.pump_events = 0;
         }
         

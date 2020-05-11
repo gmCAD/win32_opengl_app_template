@@ -1,22 +1,12 @@
+
+//~ NOTE(rjf): C Standard Library
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
-
-#if BUILD_WIN32
-#include <windows.h>
-#include <gl/gl.h>
-#include "ext/wglext.h"
-#else
-#error "OpenGL includes for platform not supported."
-#endif
-#include "ext/glext.h"
-
-#define global         static
-#define internal       static
-#define local_persist  static
 
 #define MemoryCopy memcpy
 #define MemoryMove memmove
@@ -28,15 +18,23 @@
 #define Sin sinf
 #define Cos cosf
 #define Tan tanf
+#define CStringToI32(s)            ((i32)atoi(s))
+#define CStringToI16(s)            ((i16)atoi(s))
+#define CStringToF32(s)            ((f32)atof(s))
 
+//~ NOTE(rjf): Helper Macros
+
+#define global         static
+#define internal       static
+#define local_persist  static
 #define ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
-
 #define Bytes(n)      (n)
 #define Kilobytes(n)  (Bytes(n)*1024)
 #define Megabytes(n)  (Kilobytes(n)*1024)
 #define Gigabytes(n)  (Megabytes(n)*1024)
-
 #define PI (3.1415926535897f)
+
+//~ NOTE(rjf): Base Types
 
 typedef int8_t   i8;
 typedef int16_t  i16;
@@ -56,6 +54,8 @@ typedef i32      b32;
 typedef i64      b64;
 typedef float    f32;
 typedef double   f64;
+
+//~ NOTE(rjf): Math
 
 typedef union v2 v2;
 union v2
@@ -133,21 +133,72 @@ union v4
     f32 elements[4];
 };
 
-internal v2
-V2Init(f32 x, f32 y)
+typedef union iv2 iv2;
+union iv2
 {
-    v2 v = { x, y };
-    return v;
-}
-#define v2(x, y) V2Init(x, y)
+    struct
+    {
+        i32 x;
+        i32 y;
+    };
+    
+    struct
+    {
+        i32 width;
+        i32 height;
+    };
+    
+    i32 elements[2];
+};
 
-internal v3
-V3Init(f32 x, f32 y, f32 z)
+typedef union iv3 iv3;
+union iv3
 {
-    v3 v = { x, y, z };
-    return v;
-}
-#define v3(x, y, z) V3Init(x, y, z)
+    struct
+    {
+        i32 x;
+        i32 y;
+        i32 z;
+    };
+    
+    struct
+    {
+        i32 r;
+        i32 g;
+        i32 b;
+    };
+    
+    i32 elements[3];
+};
+
+typedef union iv4 iv4;
+union iv4
+{
+    struct
+    {
+        i32 x;
+        i32 y;
+        i32 z;
+        i32 w;
+    };
+    
+    struct
+    {
+        i32 r;
+        i32 g;
+        i32 b;
+        i32 a;
+    };
+    
+    i32 elements[4];
+};
+
+#define v2(...)   (v2){ __VA_ARGS__ }
+#define v3(...)   (v3){ __VA_ARGS__ }
+#define v4(...)   (v4){ __VA_ARGS__ }
+#define iv2(...) (iv2){ __VA_ARGS__ }
+#define iv3(...) (iv3){ __VA_ARGS__ }
+#define iv4(...) (iv4){ __VA_ARGS__ }
 
 internal v3
 V3AddV3(v3 a, v3 b)
@@ -233,104 +284,12 @@ MaximumInV3(v3 v)
     return maximum;
 }
 
-internal v4
-V4Init(f32 x, f32 y, f32 z, f32 w)
-{
-    v4 v = { x, y, z, w };
-    return v;
-}
-#define v4(x, y, z, w) V4Init(x, y, z, w)
-
 internal b32
 V4RectHasPoint(v4 v, v2 p)
 {
     return(p.x >= v.x && p.x <= v.x + v.width &&
            p.y >= v.y && p.y <= v.y + v.height);
 }
-
-typedef union iv2 iv2;
-union iv2
-{
-    struct
-    {
-        i32 x;
-        i32 y;
-    };
-    
-    struct
-    {
-        i32 width;
-        i32 height;
-    };
-    
-    i32 elements[2];
-};
-
-typedef union iv3 iv3;
-union iv3
-{
-    struct
-    {
-        i32 x;
-        i32 y;
-        i32 z;
-    };
-    
-    struct
-    {
-        i32 r;
-        i32 g;
-        i32 b;
-    };
-    
-    i32 elements[3];
-};
-
-typedef union iv4 iv4;
-union iv4
-{
-    struct
-    {
-        i32 x;
-        i32 y;
-        i32 z;
-        i32 w;
-    };
-    
-    struct
-    {
-        i32 r;
-        i32 g;
-        i32 b;
-        i32 a;
-    };
-    
-    i32 elements[4];
-};
-
-internal iv2
-IV2Init(i32 x, i32 y)
-{
-    iv2 v = { x, y };
-    return v;
-}
-#define iv2(x, y) IV2Init(x, y)
-
-internal iv3
-IV3Init(i32 x, i32 y, i32 z)
-{
-    iv3 v = { x, y, z };
-    return v;
-}
-#define iv3(x, y, z) IV3Init(x, y, z)
-
-internal iv4
-IV4Init(i32 x, i32 y, i32 z, i32 w)
-{
-    iv4 v = { x, y, z, w };
-    return v;
-}
-#define iv4(x, y, z, w) IV4Init(x, y, z, w)
 
 typedef struct m4 m4;
 struct m4
@@ -654,11 +613,7 @@ HSVToRGB(v3 hsv)
     return rgb;
 }
 
-internal f32
-ClampF32(f32 v, f32 l, f32 h)
-{
-    return v < l ? l : v > h ? h : v;
-}
+//~ NOTE(rjf): Random Number Generation
 
 internal void
 SeedRandomNumberGeneratorWithTime(void)
@@ -680,6 +635,8 @@ RandomF32(f32 low, f32 high)
     // TODO(rjf): Get rid of rand()
     return low + (high - low) * ((rand() % 10000) / 10000.f);
 }
+
+//~ NOTE(rjf): Perlin Noise
 
 global int global_perlin_noise_seed = 0;
 global int global_perlin_noise_hash[] =
@@ -754,6 +711,8 @@ Perlin2D(f32 x, f32 y, f32 freq, int depth)
     return fin/div;
 }
 
+//~ NOTE(rjf): Memory Allocators
+
 typedef struct MemoryArena MemoryArena;
 struct MemoryArena
 {
@@ -819,6 +778,8 @@ MemoryArenaAllocateAndZeroAligned(MemoryArena *arena, u32 size, u32 alignment)
     }
     return memory;
 }
+
+#define PushArray(a,T,c) (T*)MemoryArenaAllocate((a), sizeof(T)*(c))
 
 internal void *
 MemoryArenaAllocate(MemoryArena *arena, u32 size)
@@ -973,11 +934,8 @@ MemoryPoolClear(MemoryPool *pool)
     *pool = MemoryPoolInit(pool->memory, pool->memory_size, pool->chunk_size);
 }
 
-#define StringCopy                 strcpy
-#define StringCopyN                strncpy
-#define CStringToI32(s)            ((i32)atoi(s))
-#define CStringToI16(s)            ((i16)atoi(s))
-#define CStringToF32(s)            ((f32)atof(s))
+//~ NOTE(rjf): String Manipulation
+
 #define CharIsSpace(c) ((c) <= 32)
 #define CharIsDigit CharIsNumeric
 
@@ -1042,152 +1000,97 @@ CharToUpper(char c)
     return c;
 }
 
-internal b32
-CStringMatchCaseSensitive(char *a, char *b)
+typedef struct String8 String8;
+struct String8
 {
-    b32 result = 1;
-    if(a && b)
+    union
     {
-        for(u32 i = 0;; ++i)
-        {
-            if(a[i] != b[i])
-            {
-                result = 0;
-                break;
-            }
-            else if(!a[i])
-            {
-                break;
-            }
-        }
-    }
-    else if(a != b)
-    {
-        result = 0;
-    }
-    return result;
+        u8 *string;
+        u8 *str;
+        void *data;
+        void *ptr;
+    };
+    u64 size;
+};
+
+#define S8Lit(s) S8((u8*)(s), ArrayCount(s) - 1)
+#define S8LitComp(s) {(u8*)(s), ArrayCount(s) - 1}
+#define StringExpand(s) (int)((s).size), ((s).str)
+
+internal String8
+String8FromCString(char *cstring)
+{
+    String8 string = {0};
+    string.str = (u8 *)cstring;
+    string.size = CalculateCStringLength(cstring);
+    return string;
 }
 
-internal b32
-CStringMatchCaseSensitiveN(char *a, char *b, u32 n)
-{
-    b32 result = 1;
-    if(a && b)
-    {
-        for(u32 i = 0; i < n; ++i)
-        {
-            if(a[i] != b[i])
-            {
-                result = 0;
-                break;
-            }
-            else if(!a[i])
-            {
-                break;
-            }
-        }
-    }
-    else if(a != b)
-    {
-        result = 0;
-    }
-    return result;
-}
+typedef u32 StringMatchFlags;
+#define StringMatchFlag_MatchCase       (1<<0)
+#define StringMatchFlag_RightSideSloppy (1<<1)
 
 internal b32
-CStringMatchCaseInsensitive(char *a, char *b)
-{
-    b32 result = 1;
-    if(a && b)
-    {
-        for(u32 i = 0;; ++i)
-        {
-            if(CharToLower(a[i]) != CharToLower(b[i]))
-            {
-                result = 0;
-                break;
-            }
-            else if(!a[i])
-            {
-                break;
-            }
-        }
-    }
-    else if(a != b)
-    {
-        result = 0;
-    }
-    return result;
-}
-
-internal b32
-CStringMatchCaseInsensitiveN(char *a, char *b, u32 n)
-{
-    b32 result = 1;
-    if(a && b)
-    {
-        for(u32 i = 0; i < n; ++i)
-        {
-            if(CharToLower(a[i]) != CharToLower(b[i]))
-            {
-                result = 0;
-                break;
-            }
-            else if(!a[i])
-            {
-                break;
-            }
-        }
-    }
-    else if(a != b)
-    {
-        result = 0;
-    }
-    return result;
-}
-
-#define CStringPrefixedWith CStringBeginsWith
-internal b32
-CStringBeginsWith(char *str, char *prefix)
-{
-    return CStringMatchCaseInsensitiveN(str, prefix, CalculateCStringLength(prefix));
-}
-
-internal b32
-CStringEndsWithSuffix(char *str, char *suffix)
-{
-    return CStringMatchCaseInsensitive(str + CalculateCStringLength(str) - CalculateCStringLength(suffix), suffix);
-}
-
-internal b32
-CStringHasSubstring(char *str, char *substr)
+StringMatchGeneric(String8 a, String8 b, StringMatchFlags flags)
 {
     b32 result = 0;
-    for(u32 i = 0; str[i]; ++i)
+    
+    if(a.size == b.size || flags & StringMatchFlag_RightSideSloppy)
     {
-        if(CharToLower(str[i]) == CharToLower(substr[0]))
+        result = 1;
+        for(u64 i = 0; i < a.size && i < b.size; ++i)
         {
-            if(CStringMatchCaseInsensitiveN(str + i, substr, CalculateCStringLength(substr)))
+            b32 character_match = 0;
+            
+            if(a.str[i] == b.str[i])
             {
-                result = 1;
+                character_match = 1;
+            }
+            else
+            {
+                if(flags & StringMatchFlag_MatchCase)
+                {
+                    if(CharToUpper(a.str[i]) == CharToUpper(b.str[i]))
+                    {
+                        character_match = 1;
+                    }
+                }
+            }
+            
+            if(!character_match)
+            {
+                result = 0;
                 break;
             }
         }
     }
+    
     return result;
 }
 
-internal i32
-GetFirstI32FromCString(char *str)
+internal b32
+StringMatch(String8 a, String8 b)
+{
+    return StringMatchGeneric(a, b, StringMatchFlag_MatchCase);
+}
+
+internal b32
+StringMatchCaseInsensitive(String8 a, String8 b)
+{
+    return StringMatchGeneric(a, b, 0);
+}
+
+internal i64
+GetFirstIntegerFromString(String8 string)
 {
     i32 result = 0;
     b32 found_first_digit = 0;
     u32 integer_write_pos = 0;
-    char integer[64] = {0};
+    u8 integer[64] = {0};
     u32 read_pos = 0;
     for(;; ++read_pos)
     {
-        if(str[read_pos] == 0)
+        if(string.str[read_pos] == 0)
         {
             break;
         }
@@ -1198,9 +1101,9 @@ GetFirstI32FromCString(char *str)
                 integer[sizeof(integer) - 1] = 0;
                 break;
             }
-            if(CharIsDigit(str[read_pos]) || str[read_pos] == '-')
+            if(CharIsDigit(string.str[read_pos]) || string.str[read_pos] == '-')
             {
-                integer[integer_write_pos++] = str[read_pos];
+                integer[integer_write_pos++] = string.str[read_pos];
             }
             else
             {
@@ -1210,9 +1113,9 @@ GetFirstI32FromCString(char *str)
         }
         else
         {
-            if(CharIsDigit(str[read_pos]) || str[read_pos] == '-')
+            if(CharIsDigit(string.str[read_pos]) || string.str[read_pos] == '-')
             {
-                integer[integer_write_pos++] = str[read_pos];
+                integer[integer_write_pos++] = string.str[read_pos];
                 found_first_digit = 1;
             }
         }
@@ -1409,61 +1312,27 @@ ConvertCStringToLowercaseWithUnderscores(char *str)
     return str;
 }
 
-typedef struct String
+internal String8
+PushStringFV(MemoryArena *arena, char *format, va_list args)
 {
-    char *data;
-    u32 length;
-    u32 size;
-    u32 max_size;
-    b32 is_mutable;
-}
-String;
-
-internal char *
-MakeCStringOnMemoryArena(MemoryArena *arena, char *format, ...)
-{
-    char *result = 0;
-    va_list args;
-    va_start(args, format);
-    u32 needed_bytes = vsnprintf(0, 0, format, args)+1;
-    va_end(args);
-    result = MemoryArenaAllocate(arena, needed_bytes);
-    if(result)
-    {
-        va_start(args, format);
-        vsnprintf(result, needed_bytes, format, args);
-        va_end(args);
-        result[needed_bytes-1] = 0;
-    }
-    return result;
+    va_list args2;
+    va_copy(args2, args);
+    u32 needed_bytes = vsnprintf(0, 0, format, args) + 1;
+    String8 result = {0};
+    result.str = PushArray(arena, u8, needed_bytes);
+    result.size = vsnprintf((char*)result.str, needed_bytes, format, args2);
+    result.str[result.size] = 0;
+    return(result);
 }
 
-internal String
-MakeStringOnMemoryArena(MemoryArena *arena, char *format, ...)
+internal String8
+PushStringF(MemoryArena *arena, char *fmt, ...)
 {
-    String string = {0};
-    
     va_list args;
-    va_start(args, format);
-    u32 needed_bytes = vsnprintf(0, 0, format, args)+1;
+    va_start(args, fmt);
+    String8 result = PushStringFV(arena, fmt, args);
     va_end(args);
-    
-    string.data = MemoryArenaAllocate(arena, needed_bytes);
-    if(string.data)
-    {
-        string.length = needed_bytes-1;
-        string.size = needed_bytes;
-        string.max_size = string.size;
-        string.is_mutable = 0;
-        
-        va_start(args, format);
-        vsnprintf(string.data, needed_bytes, format, args);
-        va_end(args);
-        
-        string.data[needed_bytes-1] = 0;
-    }
-    
-    return string;
+    return(result);
 }
 
 static unsigned int global_crc32_table[] =
@@ -1562,279 +1431,6 @@ AppendToFixedSizeCString(char *destination, u32 destination_max, char *str)
     }
 }
 
-// NOTE(rjf): Keys
-
-enum
-{
-#define Key(name, str) KEY_##name,
-#include "platform_key_list.inc"
-#undef Key
-    KEY_MAX
-};
-
-internal char *
-KeyName(i32 key)
-{
-    local_persist char *key_names[KEY_MAX] = {
-#define Key(name, str) str,
-#include "platform_key_list.inc"
-#undef Key
-    };
-    char *key_name = "(Invalid Key)";
-    if(key >= 0 && key < KEY_MAX)
-    {
-        key_name = key_names[key];
-    }
-    return key_name;
-}
-
-// NOTE(rjf): Gamepad Buttons
-
-enum
-{
-#define GamepadButton(name, str) GAMEPAD_BUTTON_##name,
-#include "gamepad_button_list.inc"
-#undef GamepadButton
-    GAMEPAD_BUTTON_MAX
-};
-
-internal char *
-GamepadButtonName(i32 GamepadButton)
-{
-    local_persist char *GamepadButton_names[GAMEPAD_BUTTON_MAX] = {
-#define GamepadButton(name, str) str,
-#include "gamepad_button_list.inc"
-#undef GamepadButton
-    };
-    return GamepadButton_names[GamepadButton];
-}
-
-#define PLATFORM_DIRECTORY_LIST_DIRECTORIES (1<<0)
-#define PLATFORM_DIRECTORY_LIST_EXTENSIONS  (1<<1)
-#define PLATFORM_DIRECTORY_LIST_RECURSIVE   (1<<2)
-
-#define PLATFORM_DIRECTORY_ITEM_DIRECTORY   (1<<0)
-
-typedef struct PlatformDirectoryList PlatformDirectoryList;
-struct PlatformDirectoryList
-{
-    i32 flags;
-    u32 item_count;
-    char **items;
-    i32 *item_flags;
-};
-
-typedef struct GamepadInput GamepadInput;
-struct GamepadInput
-{
-    b32 connected;
-    v2 joystick_1;
-    v2 joystick_2;
-    f32 trigger_left;
-    f32 trigger_right;
-    i32 button_states[GAMEPAD_BUTTON_MAX];
-};
-
-typedef struct Platform Platform;
-struct Platform
-{
-    // NOTE(rjf): Application Metadata
-    char *executable_folder_absolute_path;
-    char *executable_absolute_path;
-    char *working_directory_path;
-    
-    // NOTE(rjf): Application Memory
-    MemoryArena permanent_arena;
-    MemoryArena scratch_arena;
-    
-    // NOTE(rjf): Options
-    volatile b32 quit;
-    b32 vsync;
-    b32 fullscreen;
-    int window_width;
-    int window_height;
-    f32 current_time;
-    f32 target_frames_per_second;
-    b32 wait_for_events_to_update;
-    b32 pump_events;
-    
-    // NOTE(rjf): Mouse Input Data
-    f32   mouse_x;
-    f32   mouse_y;
-    f32   last_mouse_x;
-    f32   last_mouse_y;
-    f32   mouse_scroll_x;
-    f32   mouse_scroll_y;
-    b32   left_mouse_down;
-    b32   left_mouse_pressed;
-    b32   right_mouse_down;
-    b32   right_mouse_pressed;
-    b32   mouse_position_captured;
-    b32   mouse_buttons_captured;
-    b32   pre_frame_left_mouse_down;
-    b32   pre_frame_right_mouse_down;
-    
-    // NOTE(rjf): Keyboard Input Data
-    b8    key_down            [KEY_MAX];
-    b8    key_pressed         [KEY_MAX];
-    b8    key_released        [KEY_MAX];
-    b8    pre_frame_key_down  [KEY_MAX];
-    i32   last_key;
-    char *target_text;
-    u32   target_text_max_characters;
-    u32   target_text_edit_pos;
-    b32   keyboard_captured;
-    
-    // NOTE(rjf): Gamepad Input Data
-#ifndef MAX_GAMEPAD_COUNT
-#define MAX_GAMEPAD_COUNT 1
-#endif
-    GamepadInput *gamepads;
-    GamepadInput *last_frame_gamepads;
-    GamepadInput gamepad_states_1[MAX_GAMEPAD_COUNT];
-    GamepadInput gamepad_states_2[MAX_GAMEPAD_COUNT];
-    
-    // NOTE(rjf): Audio Output Data
-    f32 *sample_out;
-    u32 sample_count_to_output;
-    u32 samples_per_second;
-    
-    // NOTE(rjf): Functions
-    void (*OutputError)(char *error_type, char *error_format, ...);
-    void (*SaveToFile)(char *path, void *data, u32 data_len);
-    void (*AppendToFile)(char *path, void *data, u32 data_len);
-    void (*LoadEntireFile)(char *path, void **data, u32 *data_len, b32 error_on_non_existence);
-    char *(*LoadEntireFileAndNullTerminate)(char *path);
-    void (*FreeFileMemory)(void *data);
-    void (*DeleteFile)(char *path);
-    b32 (*MakeDirectory)(char *path);
-    b32 (*DoesFileExist)(char *path);
-    b32 (*DoesDirectoryExist)(char *path);
-    b32 (*CopyFile)(char *dest, char *source);
-    b32 (*CopyDirectoryRecursively)(char *dest, char *source);
-    PlatformDirectoryList (*PlatformDirectoryListLoad)(char *path, i32 flags);
-    void (*PlatformDirectoryListCleanUp)(PlatformDirectoryList *file_list);
-    void *(*HeapAlloc)(u32 size);
-    void (*HeapFree)(void *memory);
-    f32 (*GetTime)(void);
-    u64 (*GetCycles)(void);
-    void (*ResetCursor)(void);
-    void (*SetCursorToHorizontalResize)(void);
-    void (*SetCursorToVerticalResize)(void);
-    void (*RefreshScreen)(void);
-    void *(*LoadOpenGLProcedure)(char *name);
-};
-
-global Platform *platform = 0;
-
-inline internal void
-PlatformCaptureMousePosition(void)
-{
-    platform->mouse_x = -1000;
-    platform->mouse_y = -1000;
-    platform->mouse_scroll_x = 0;
-    platform->mouse_scroll_y = 0;
-    platform->mouse_position_captured = 1;
-}
-
-inline internal void
-PlatformCaptureMouseButtons(void)
-{
-    platform->left_mouse_pressed = 0;
-    platform->left_mouse_down = 0;
-    platform->right_mouse_pressed = 0;
-    platform->right_mouse_down = 0;
-    platform->mouse_buttons_captured = 1;
-}
-
-inline internal void
-PlatformCaptureKeyboard(void)
-{
-    MemorySet(platform->key_down, 0, sizeof(platform->key_down));
-    MemorySet(platform->key_pressed, 0, sizeof(platform->key_pressed));
-    MemorySet(platform->key_released, 0, sizeof(platform->key_released));
-    platform->last_key = 0;
-    platform->keyboard_captured = 1;
-}
-
-// NOTE(rjf): Only called by platform layers. Do not call in app.
-internal void
-PlatformBeginFrame(void)
-{
-    platform->pre_frame_left_mouse_down = platform->left_mouse_down;
-    platform->pre_frame_right_mouse_down = platform->right_mouse_down;
-    MemoryCopy(platform->pre_frame_key_down, platform->key_down, sizeof(platform->key_down[0]) * KEY_MAX);
-    platform->target_text = 0;
-    platform->pump_events = 0;
-}
-
-// NOTE(rjf): Only called by platform layers. Do not call in app.
-internal void
-PlatformEndFrame(void)
-{
-    platform->last_mouse_x = platform->mouse_x;
-    platform->last_mouse_y = platform->mouse_y;
-    
-    // NOTE(rjf): Prepare input data for next frame
-    {
-        platform->last_key = 0;
-        for(u32 i = 0; i < KEY_MAX; ++i)
-        {
-            platform->key_pressed[i] = 0;
-            platform->key_released[i] = 0;
-        }
-        platform->keyboard_captured = 0;
-        
-        platform->mouse_position_captured = 0;
-        platform->mouse_buttons_captured = 0;
-        platform->mouse_scroll_x = 0.f;
-        platform->mouse_scroll_y = 0.f;
-        platform->left_mouse_down = platform->pre_frame_left_mouse_down;
-        platform->right_mouse_down = platform->pre_frame_right_mouse_down;
-        MemoryCopy(platform->key_down, platform->pre_frame_key_down, sizeof(platform->key_down[0]) * KEY_MAX);
-        platform->left_mouse_pressed = 0;
-        platform->right_mouse_pressed = 0;
-        
-        platform->last_frame_gamepads = platform->gamepads;
-        if(platform->gamepads == platform->gamepad_states_1)
-        {
-            platform->gamepads = platform->gamepad_states_2;
-        }
-        else
-        {
-            platform->gamepads = platform->gamepad_states_1;
-        }
-    }
-    
-    platform->current_time += 1.f / platform->target_frames_per_second;
-}
-
-#ifdef _MSC_VER
-#define APP_PROC __declspec(dllexport)
-#else
-#define APP_PROC
-#endif
-
-/* Loaded as "PermanentLoad" */
-#define APPLICATION_PERMANENT_LOAD(name) void name(Platform *platform_)
-typedef APPLICATION_PERMANENT_LOAD(ApplicationPermanentLoadCallback);
-APPLICATION_PERMANENT_LOAD(ApplicationPermanentLoadStub) {}
-
-/* Loaded as "HotLoad" */
-#define APPLICATION_HOT_LOAD(name) void name(Platform *platform_)
-typedef APPLICATION_HOT_LOAD(ApplicationHotLoadCallback);
-APPLICATION_HOT_LOAD(ApplicationHotLoadStub) {}
-
-/* Loaded as "HotUnload" */
-#define APPLICATION_HOT_UNLOAD(name) void name(void)
-typedef APPLICATION_HOT_UNLOAD(ApplicationHotUnloadCallback);
-APPLICATION_HOT_UNLOAD(ApplicationHotUnloadStub) {}
-
-/* Loaded as "Update" */
-#define APPLICATION_UPDATE(name) void name(void)
-typedef APPLICATION_UPDATE(ApplicationUpdateCallback);
-APPLICATION_UPDATE(ApplicationUpdateStub) {}
-
 #undef Assert
 #define AssertStatement HardAssert
 #define Assert HardAssert
@@ -1842,77 +1438,14 @@ APPLICATION_UPDATE(ApplicationUpdateStub) {}
 #define SoftAssert(b) do { if(!(b)) { _AssertFailure(#b, __LINE__, __FILE__, 0); } } while(0)
 #define BreakDebugger() _DebugBreak_Internal_()
 #define Log(...)         _DebugLog(0,           __FILE__, __LINE__, __VA_ARGS__)
-#define LogWarning(...)  _DebugLog(LOG_WARNING, __FILE__, __LINE__, __VA_ARGS__)
-#define LogError(...)    _DebugLog(LOG_ERROR,   __FILE__, __LINE__, __VA_ARGS__)
+#define LogWarning(...)  _DebugLog(Log_Warning, __FILE__, __LINE__, __VA_ARGS__)
+#define LogError(...)    _DebugLog(Log_Error,   __FILE__, __LINE__, __VA_ARGS__)
 
-#define LOG_WARNING (1<<0)
-#define LOG_ERROR   (1<<1)
+#define Log_Warning (1<<0)
+#define Log_Error   (1<<1)
 
 void _AssertFailure(char *expression, int line, char *file, int crash);
 void _DebugLog(i32 flags, char *file, int line, char *format, ...);
 void _DebugBreak_Internal_(void);
 void _BeginTimer(char *file, int line, char *format, ...);
 void _EndTimer(void);
-
-void
-_AssertFailure(char *expression, int line, char *file, int crash)
-{
-    if(crash)
-    {
-        platform->OutputError("Assertion Failure", "Assertion of %s at %s:%i failed. Trying to crash...",
-                              expression, file, line);
-        BreakDebugger();
-        *(volatile int *)0 = 0;
-    }
-    else
-    {
-        LogError("[Soft Assertion] Assertion of %s at %s:%i failed.", expression, file, line);
-    }
-}
-
-void
-_DebugLog(i32 flags, char *file, int line, char *format, ...)
-{
-    // NOTE(rjf): Log to stdout
-    {
-        char *name = "Info";
-        if(flags & LOG_ERROR)
-        {
-            name = "Error";
-        }
-        else if(flags & LOG_WARNING)
-        {
-            name = "Warning";
-        }
-        fprintf(stdout, "%s (%s:%i) ", name, file, line);
-        va_list args;
-        va_start(args, format);
-        vfprintf(stdout, format, args);
-        va_end(args);
-        fprintf(stdout, "%s", "\n");
-    }
-    
-    // NOTE(rjf): Log to VS output, etc.
-    {
-        local_persist char string[4096] = {0};
-        va_list args;
-        va_start(args, format);
-        vsnprintf(string, sizeof(string), format, args);
-        va_end(args);
-#if BUILD_WIN32
-        OutputDebugStringA(string);
-        OutputDebugStringA("\n");
-#endif
-    }
-    
-}
-
-void
-_DebugBreak_Internal_(void)
-{
-#if _MSC_VER
-    __debugbreak();
-#else
-    *(volatile int *)0 = 0;
-#endif
-}

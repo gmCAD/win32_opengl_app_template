@@ -1,25 +1,23 @@
 #include "language_layer.h"
+#include "platform.h"
 #include "opengl.h"
+#include "language_layer.c"
 
-APP_PROC
-APPLICATION_PERMANENT_LOAD(PermanentLoad)
+AppEntryPoint
+AppEntryPoint_PermanentLoad(PermanentLoad)
 {
     platform = platform_;
     LoadAllOpenGLProcedures();
 }
 
-APP_PROC
-APPLICATION_HOT_LOAD(HotLoad)
+AppEntryPoint AppEntryPoint_HotLoad(HotLoad)
 {
     platform = platform_;
 }
 
-APP_PROC
-APPLICATION_HOT_UNLOAD(HotUnload)
-{}
+AppEntryPoint AppEntryPoint_HotUnload(HotUnload) {}
 
-APP_PROC
-APPLICATION_UPDATE(Update)
+AppEntryPoint AppEntryPoint_Update(Update)
 {
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);

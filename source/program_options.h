@@ -1,6 +1,6 @@
-#define WINDOW_TITLE "Application"
-#define APP_FILENAME "app"
-#define DEFAULT_WINDOW_WIDTH 1280
-#define DEFAULT_WINDOW_HEIGHT 720
-#define PERMANENT_STORAGE_SIZE Megabytes(64)
-#define SCRATCH_STORAGE_SIZE Megabytes(64)
+#define ProgramOption_WindowTitle        "Application"
+#define ProgramOption_ProgramFilename    "app"
+#define ProgramOption_DefaultWindowWidth  1280
+#define ProgramOption_DefaultWindowHeight  720
+#define ProgramOption_DefaultPermanentStorageSize Megabytes(64)
+#define ProgramOption_DefaultScratchStorageSize   Megabytes(64)
