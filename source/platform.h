@@ -322,6 +322,162 @@ struct Platform
 
 global Platform *platform = 0;
 
+internal b32
+GetNextPlatformEvent(PlatformEvent **event)
+{
+    b32 result = 0;
+    HardAssert(platform != 0);
+    u32 start_index = 0;
+    PlatformEvent *new_event = 0;
+    if(*event)
+    {
+        start_index = (*event - platform->events) + 1;
+    }
+    for(u32 i = start_index; i < platform->event_count; ++i)
+    {
+        if(platform->events[i].type != PlatformEventType_Null)
+        {
+            new_event = platform->events+i;
+            break;
+        }
+    }
+    *event = new_event;
+    result = new_event != 0;
+    return result;
+}
+
+internal void
+EatPlatformEvent(PlatformEvent *event)
+{
+    event->type = PlatformEventType_Null;
+}
+
+internal b32
+GetMouseMove(PlatformEvent **event_ptr)
+{
+    b32 result = 0;
+    if(event_ptr)
+    {
+        *event_ptr = 0;
+    }
+    for(PlatformEvent *event = 0; GetNextPlatformEvent(&event);)
+    {
+        if(event->type == PlatformEventType_MouseMove)
+        {
+            if(event_ptr)
+            {
+                *event_ptr = event;
+            }
+            result = 1;
+            break;
+        }
+    }
+    return result;
+}
+
+internal b32
+GetMouseMoveRect(PlatformEvent **event_ptr, v4 rect)
+{
+    b32 result = 0;
+    if(event_ptr)
+    {
+        *event_ptr = 0;
+    }
+    for(PlatformEvent *event = 0; GetNextPlatformEvent(&event);)
+    {
+        if(event->type == PlatformEventType_MouseMove &&
+           V4RectHasPoint(rect, event->position))
+        {
+            if(event_ptr)
+            {
+                *event_ptr = event;
+            }
+            result = 1;
+            break;
+        }
+    }
+    return result;
+}
+
+internal b32
+GetMousePressRect(PlatformEvent **event_ptr, v4 rect)
+{
+    b32 result = 0;
+    for(PlatformEvent *event = 0; GetNextPlatformEvent(&event);)
+    {
+        if(event->type == PlatformEventType_MousePress &&
+           V4RectHasPoint(rect, event->position))
+        {
+            if(event_ptr)
+            {
+                *event_ptr = event;
+            }
+            result = 1;
+            break;
+        }
+    }
+    return result;
+}
+
+internal b32
+GetMouseRelease(PlatformEvent **event_ptr)
+{
+    b32 result = 0;
+    for(PlatformEvent *event = 0; GetNextPlatformEvent(&event);)
+    {
+        if(event->type == PlatformEventType_MouseRelease)
+        {
+            if(event_ptr)
+            {
+                *event_ptr = event;
+            }
+            result = 1;
+            break;
+        }
+    }
+    return result;
+}
+
+internal b32
+GetMouseReleaseRect(PlatformEvent **event_ptr, v4 rect)
+{
+    b32 result = 0;
+    for(PlatformEvent *event = 0; GetNextPlatformEvent(&event);)
+    {
+        if(event->type == PlatformEventType_MouseRelease &&
+           V4RectHasPoint(rect, event->position))
+        {
+            if(event_ptr)
+            {
+                *event_ptr = event;
+            }
+            result = 1;
+            break;
+        }
+    }
+    return result;
+}
+
+internal b32
+GetKeyPress(PlatformEvent **event_ptr, Key key)
+{
+    b32 result = 0;
+    for(PlatformEvent *event = 0; GetNextPlatformEvent(&event);)
+    {
+        if(event->type == PlatformEventType_KeyPress &&
+           event->key == key)
+        {
+            if(event_ptr)
+            {
+                *event_ptr = event;
+            }
+            result = 1;
+            break;
+        }
+    }
+    return result;
+}
+
 // NOTE(rjf): Only called by platform layers. Do not call in app.
 internal void
 PlatformBeginFrame(void)
