@@ -509,21 +509,21 @@ PlatformPushEvent(PlatformEvent event)
 #endif
 
 /* Loaded as "PermanentLoad" */
-#define AppEntryPoint_PermanentLoad(name) APP_ENTRY_POINT void name(Platform *platform_)
+#define AppEntryPoint_PermanentLoad APP_ENTRY_POINT void PermanentLoad(Platform *platform_)
 typedef void ApplicationPermanentLoadCallback(Platform *);
 internal void ApplicationPermanentLoadStub(Platform *platform) {}
 
 /* Loaded as "HotLoad" */
-#define AppEntryPoint_HotLoad(name) APP_ENTRY_POINT void name(Platform *platform_)
+#define AppEntryPoint_HotLoad APP_ENTRY_POINT void HotLoad(Platform *platform_)
 typedef void ApplicationHotLoadCallback(Platform *);
 internal void ApplicationHotLoadStub(Platform *platform) {}
 
 /* Loaded as "HotUnload" */
-#define AppEntryPoint_HotUnload(name) APP_ENTRY_POINT void name(void)
+#define AppEntryPoint_HotUnload APP_ENTRY_POINT void HotUnload(void)
 typedef void ApplicationHotUnloadCallback(void);
 internal void ApplicationHotUnloadStub(void) {}
 
 /* Loaded as "Update" */
-#define AppEntryPoint_Update(name) void name(void)
+#define AppEntryPoint_Update APP_ENTRY_POINT void Update(void)
 typedef void ApplicationUpdateCallback(void);
 internal void ApplicationUpdateStub(void) {}
