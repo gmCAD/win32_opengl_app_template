@@ -503,27 +503,27 @@ PlatformPushEvent(PlatformEvent event)
 }
 
 #ifdef _MSC_VER
-#define AppEntryPoint __declspec(dllexport)
+#define APP_ENTRY_POINT __declspec(dllexport)
 #else
-#define AppEntryPoint
+#define APP_ENTRY_POINT
 #endif
 
 /* Loaded as "PermanentLoad" */
-#define AppEntryPoint_PermanentLoad(name) void name(Platform *platform_)
-typedef AppEntryPoint_PermanentLoad(ApplicationPermanentLoadCallback);
-AppEntryPoint_PermanentLoad(ApplicationPermanentLoadStub) {}
+#define AppEntryPoint_PermanentLoad(name) APP_ENTRY_POINT void name(Platform *platform_)
+typedef void ApplicationPermanentLoadCallback(Platform *);
+internal void ApplicationPermanentLoadStub(Platform *platform) {}
 
 /* Loaded as "HotLoad" */
-#define AppEntryPoint_HotLoad(name) void name(Platform *platform_)
-typedef AppEntryPoint_HotLoad(ApplicationHotLoadCallback);
-AppEntryPoint_HotLoad(ApplicationHotLoadStub) {}
+#define AppEntryPoint_HotLoad(name) APP_ENTRY_POINT void name(Platform *platform_)
+typedef void ApplicationHotLoadCallback(Platform *);
+internal void ApplicationHotLoadStub(Platform *platform) {}
 
 /* Loaded as "HotUnload" */
-#define AppEntryPoint_HotUnload(name) void name(void)
-typedef AppEntryPoint_HotUnload(ApplicationHotUnloadCallback);
-AppEntryPoint_HotUnload(ApplicationHotUnloadStub) {}
+#define AppEntryPoint_HotUnload(name) APP_ENTRY_POINT void name(void)
+typedef void ApplicationHotUnloadCallback(void);
+internal void ApplicationHotUnloadStub(void) {}
 
 /* Loaded as "Update" */
 #define AppEntryPoint_Update(name) void name(void)
-typedef AppEntryPoint_Update(ApplicationUpdateCallback);
-AppEntryPoint_Update(ApplicationUpdateStub) {}
+typedef void ApplicationUpdateCallback(void);
+internal void ApplicationUpdateStub(void) {}
