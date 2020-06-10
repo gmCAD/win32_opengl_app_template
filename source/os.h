@@ -199,9 +199,9 @@ struct OS_State
     void (*Commit)(void *memory, u64 size);
     void (*Decommit)(void *memory, u64 size);
     void (*OutputError)(char *error_type, char *error_format, ...);
-    void (*SaveToFile)(String8 path, void *data, u32 data_len);
-    void (*AppendToFile)(String8 path, void *data, u32 data_len);
-    void (*LoadEntireFile)(M_Arena *arena, String8 path, void **data, u32 *data_len);
+    void (*SaveToFile)(String8 path, void *data, u64 data_len);
+    void (*AppendToFile)(String8 path, void *data, u64 data_len);
+    void (*LoadEntireFile)(M_Arena *arena, String8 path, void **data, u64 *data_len);
     char *(*LoadEntireFileAndNullTerminate)(M_Arena *arena, String8 path);
     void (*DeleteFile)(String8 path);
     b32 (*MakeDirectory)(String8 path);

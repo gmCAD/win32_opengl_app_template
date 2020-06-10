@@ -9,7 +9,7 @@ W32_FrameCStringFromString(String8 string)
 }
 
 internal void
-W32_SaveToFile(String8 path, void *data, u32 data_len)
+W32_SaveToFile(String8 path, void *data, u64 data_len)
 {
     HANDLE file = {0};
     {
@@ -49,7 +49,7 @@ W32_SaveToFile(String8 path, void *data, u32 data_len)
 }
 
 internal void
-W32_AppendToFile(String8 path, void *data, u32 data_len)
+W32_AppendToFile(String8 path, void *data, u64 data_len)
 {
     HANDLE file = {0};
     {
@@ -90,7 +90,7 @@ W32_AppendToFile(String8 path, void *data, u32 data_len)
 }
 
 internal void
-W32_LoadEntireFile(M_Arena *arena, String8 path, void **data, u32 *data_len)
+W32_LoadEntireFile(M_Arena *arena, String8 path, void **data, u64 *data_len)
 {
     *data = 0;
     *data_len = 0;
@@ -124,7 +124,7 @@ W32_LoadEntireFile(M_Arena *arena, String8 path, void **data, u32 *data_len)
                 ((u8 *)read_data)[read_bytes] = 0;
                 
                 *data = read_data;
-                *data_len = (u32)bytes_read;
+                *data_len = (u64)bytes_read;
             }
             CloseHandle(file);
         }
