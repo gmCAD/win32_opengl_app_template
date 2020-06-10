@@ -1,6 +1,6 @@
 
 internal b32
-Win32TimerInit(Win32Timer *timer)
+W32_TimerInit(W32_Timer *timer)
 {
     b32 result = 0;
     
@@ -15,13 +15,13 @@ Win32TimerInit(Win32Timer *timer)
 }
 
 internal void
-Win32TimerBeginFrame(Win32Timer *timer)
+W32_TimerBeginFrame(W32_Timer *timer)
 {
     QueryPerformanceCounter(&timer->begin_frame);
 }
 
 internal void
-Win32TimerEndFrame(Win32Timer *timer, f64 milliseconds_per_frame)
+W32_TimerEndFrame(W32_Timer *timer, f64 milliseconds_per_frame)
 {
     LARGE_INTEGER end_frame;
     QueryPerformanceCounter(&end_frame);

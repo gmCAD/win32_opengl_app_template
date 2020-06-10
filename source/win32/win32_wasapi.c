@@ -32,8 +32,8 @@ CO_INITIALIZE_EX(CoInitializeExStub)
 }
 global CoInitializeEx_ *CoInitializeExProc = CoInitializeExStub;
 
-typedef struct Win32SoundOutput Win32SoundOutput;
-struct Win32SoundOutput
+typedef struct W32_SoundOutput W32_SoundOutput;
+struct W32_SoundOutput
 {
     b32 initialized;
     
@@ -49,7 +49,7 @@ struct Win32SoundOutput
 };
 
 internal void
-Win32LoadWASAPI(void)
+W32_LoadWASAPI(void)
 {
     HMODULE wasapi_lib = LoadLibraryA("ole32.dll");
     if(wasapi_lib)
@@ -65,7 +65,7 @@ Win32LoadWASAPI(void)
 }
 
 internal void
-Win32InitWASAPI(Win32SoundOutput *output)
+W32_InitWASAPI(W32_SoundOutput *output)
 {
     CoInitializeExProc(0, COINIT_SPEED_OVER_MEMORY);
     
@@ -147,33 +147,33 @@ Win32InitWASAPI(Win32SoundOutput *output)
                     }
                     else
                     {
-                        Win32OutputError("WASAPI Error", "Request for audio render service failed.");
+                        W32_OutputError("WASAPI Error", "Request for audio render service failed.");
                     }
                 }
                 else
                 {
-                    Win32OutputError("WASAPI Error",
-                                     "Audio client initialization failed.");
+                    W32_OutputError("WASAPI Error",
+                                    "Audio client initialization failed.");
                 }
             }
             else
             {
-                Win32OutputError("WASAPI Error", "Could not activate audio device.");
+                W32_OutputError("WASAPI Error", "Could not activate audio device.");
             }
         }
         else
         {
-            Win32OutputError("WASAPI Error", "Default audio endpoint was not found.");
+            W32_OutputError("WASAPI Error", "Default audio endpoint was not found.");
         }
     }
     else
     {
-        Win32OutputError("WASAPI Error", "Device enumerator retrieval failed.");
+        W32_OutputError("WASAPI Error", "Device enumerator retrieval failed.");
     }
 }
 
 internal void
-Win32CleanUpWASAPI(Win32SoundOutput *output)
+W32_CleanUpWASAPI(W32_SoundOutput *output)
 {
     if(output->initialized)
     {
@@ -187,7 +187,7 @@ Win32CleanUpWASAPI(Win32SoundOutput *output)
 }
 
 internal void
-Win32FillSoundBuffer(u32 samples_to_write, f32 *samples, Win32SoundOutput *output)
+W32_FillSoundBuffer(u32 samples_to_write, f32 *samples, W32_SoundOutput *output)
 {
     if(samples_to_write)
     {

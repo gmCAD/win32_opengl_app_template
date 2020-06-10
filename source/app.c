@@ -1,36 +1,30 @@
 #include "language_layer.h"
-#include "platform.h"
+#include "memory.h"
+#include "strings.h"
+#include "os.h"
 #include "opengl.h"
+
 #include "language_layer.c"
+#include "memory.c"
+#include "strings.c"
+#include "os.c"
 
-typedef struct Core Core;
-struct Core
+APP_PERMANENT_LOAD
 {
-    MemoryArena *permanent_arena;
-    MemoryArena *frame_arena;
-};
-global Core *core = 0;
-
-AppEntryPoint_PermanentLoad
-{
-    platform = platform_;
+    os = os_;
     LoadAllOpenGLProcedures();
-    core = MemoryArenaAllocateAndZero(&platform->permanent_arena, sizeof(*core));
-    core->permanent_arena = &platform->permanent_arena;
-    core->frame_arena = &platform->scratch_arena;
 }
 
-AppEntryPoint_HotLoad
+APP_HOT_LOAD
 {
-    platform = platform_;
-    core = platform->permanent_arena.memory;
+    os = os_;
 }
 
-AppEntryPoint_HotUnload {}
+APP_HOT_UNLOAD {}
 
-AppEntryPoint_Update
+APP_UPDATE
 {
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    platform->RefreshScreen();
+    os->RefreshScreen();
 }

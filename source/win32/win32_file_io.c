@@ -1,6 +1,6 @@
 
 internal void
-Win32SaveToFile(char *path, void *data, u32 data_len)
+W32_SaveToFile(char *path, void *data, u32 data_len)
 {
     HANDLE file = {0};
     {
@@ -34,13 +34,13 @@ Win32SaveToFile(char *path, void *data, u32 data_len)
         }
         else
         {
-            Win32OutputError("File I/O Error", "Could not save to \"%s\"", path);
+            W32_OutputError("File I/O Error", "Could not save to \"%s\"", path);
         }
     }
 }
 
 internal void
-Win32AppendToFile(char *path, void *data, u32 data_len)
+W32_AppendToFile(char *path, void *data, u32 data_len)
 {
     HANDLE file = {0};
     {
@@ -75,13 +75,13 @@ Win32AppendToFile(char *path, void *data, u32 data_len)
         }
         else
         {
-            Win32OutputError("File I/O Error", "Could not save to \"%s\"", path);
+            W32_OutputError("File I/O Error", "Could not save to \"%s\"", path);
         }
     }
 }
 
 internal void
-Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
+W32_LoadEntireFile(M_Arena *arena, char *path, void **data, u32 *data_len)
 {
     *data = 0;
     *data_len = 0;
@@ -106,7 +106,7 @@ Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
             DWORD read_bytes = GetFileSize(file, 0);
             if(read_bytes)
             {
-                void *read_data = PushArray(arena, u8, read_bytes+1);
+                void *read_data = M_ArenaPush(arena, read_bytes+1);
                 DWORD bytes_read = 0;
                 OVERLAPPED overlapped = {0};
                 
@@ -123,7 +123,7 @@ Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
 }
 
 internal char *
-Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
+W32_LoadEntireFileAndNullTerminate(M_Arena *arena, char *path)
 {
     char *result = 0;
     
@@ -146,7 +146,7 @@ Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
             DWORD read_bytes = GetFileSize(file, 0);
             if(read_bytes)
             {
-                result = PushArray(arena, char, read_bytes+1);
+                result = M_ArenaPush(arena, read_bytes+1);
                 DWORD bytes_read = 0;
                 OVERLAPPED overlapped = {0};
                 
@@ -158,7 +158,7 @@ Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
         }
         else
         {
-            Win32OutputError("File I/O Error", "Could not read from \"%s\"", path);
+            W32_OutputError("File I/O Error", "Could not read from \"%s\"", path);
         }
     }
     
@@ -166,19 +166,19 @@ Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
 }
 
 internal void
-Win32FreeFileMemory(void *data)
+W32_FreeFileMemory(void *data)
 {
-    Win32HeapFree(data);
+    W32_HeapFree(data);
 }
 
 internal void
-Win32DeleteFile(char *path)
+W32_DeleteFile(char *path)
 {
     DeleteFileA(path);
 }
 
 internal b32
-Win32MakeDirectory(char *path)
+W32_MakeDirectory(char *path)
 {
     b32 result = 1;
     if(!CreateDirectoryA(path, 0))
@@ -189,14 +189,14 @@ Win32MakeDirectory(char *path)
 }
 
 internal b32
-Win32DoesFileExist(char *path)
+W32_DoesFileExist(char *path)
 {
     b32 found = GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
     return found;
 }
 
 internal b32
-Win32DoesDirectoryExist(char *path)
+W32_DoesDirectoryExist(char *path)
 {
     DWORD file_attributes = GetFileAttributesA(path);
     b32 found = (file_attributes != INVALID_FILE_ATTRIBUTES &&
@@ -205,19 +205,17 @@ Win32DoesDirectoryExist(char *path)
 }
 
 internal b32
-Win32CopyFile(char *dest, char *source)
+W32_CopyFile(char *dest, char *source)
 {
     b32 success = 0;
     success = CopyFile(source, dest, 0);
     return success;
 }
 
-internal PlatformDirectoryList
-Win32PlatformDirectoryListLoad(MemoryArena *arena, char *path, i32 flags)
+internal OS_DirectoryList
+W32_DirectoryListLoad(M_Arena *arena, char *path, i32 flags)
 {
-    PlatformDirectoryList list = {0};
-    
-    
+    OS_DirectoryList list = {0};
     
     return list;
 }
