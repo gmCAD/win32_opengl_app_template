@@ -1,6 +1,15 @@
 
+internal char *
+W32_FrameCStringFromString(String8 string)
+{
+    char *buffer = 0;
+    buffer = M_ArenaPushZero(&os->frame_arena, string.size+1);
+    MemoryCopy(buffer, string.str, string.size);
+    return buffer;
+}
+
 internal void
-W32_SaveToFile(char *path, void *data, u32 data_len)
+W32_SaveToFile(String8 path, void *data, u32 data_len)
 {
     HANDLE file = {0};
     {
@@ -15,7 +24,7 @@ W32_SaveToFile(char *path, void *data, u32 data_len)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFile(path,
+        if((file = CreateFile(W32_FrameCStringFromString(path),
                               desired_access,
                               share_mode,
                               &security_attributes,
@@ -40,7 +49,7 @@ W32_SaveToFile(char *path, void *data, u32 data_len)
 }
 
 internal void
-W32_AppendToFile(char *path, void *data, u32 data_len)
+W32_AppendToFile(String8 path, void *data, u32 data_len)
 {
     HANDLE file = {0};
     {
@@ -55,7 +64,7 @@ W32_AppendToFile(char *path, void *data, u32 data_len)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFileA(path,
+        if((file = CreateFileA(W32_FrameCStringFromString(path),
                                desired_access,
                                share_mode,
                                &security_attributes,
@@ -81,7 +90,7 @@ W32_AppendToFile(char *path, void *data, u32 data_len)
 }
 
 internal void
-W32_LoadEntireFile(M_Arena *arena, char *path, void **data, u32 *data_len)
+W32_LoadEntireFile(M_Arena *arena, String8 path, void **data, u32 *data_len)
 {
     *data = 0;
     *data_len = 0;
@@ -100,7 +109,7 @@ W32_LoadEntireFile(M_Arena *arena, char *path, void **data, u32 *data_len)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFile(path, desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
+        if((file = CreateFile(W32_FrameCStringFromString(path), desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
         {
             
             DWORD read_bytes = GetFileSize(file, 0);
@@ -123,7 +132,7 @@ W32_LoadEntireFile(M_Arena *arena, char *path, void **data, u32 *data_len)
 }
 
 internal char *
-W32_LoadEntireFileAndNullTerminate(M_Arena *arena, char *path)
+W32_LoadEntireFileAndNullTerminate(M_Arena *arena, String8 path)
 {
     char *result = 0;
     
@@ -140,7 +149,7 @@ W32_LoadEntireFileAndNullTerminate(M_Arena *arena, char *path)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFile(path, desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
+        if((file = CreateFile(W32_FrameCStringFromString(path), desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
         {
             
             DWORD read_bytes = GetFileSize(file, 0);
@@ -172,16 +181,16 @@ W32_FreeFileMemory(void *data)
 }
 
 internal void
-W32_DeleteFile(char *path)
+W32_DeleteFile(String8 path)
 {
-    DeleteFileA(path);
+    DeleteFileA(W32_FrameCStringFromString(path));
 }
 
 internal b32
-W32_MakeDirectory(char *path)
+W32_MakeDirectory(String8 path)
 {
     b32 result = 1;
-    if(!CreateDirectoryA(path, 0))
+    if(!CreateDirectoryA(W32_FrameCStringFromString(path), 0))
     {
         result = 0;
     }
@@ -189,31 +198,31 @@ W32_MakeDirectory(char *path)
 }
 
 internal b32
-W32_DoesFileExist(char *path)
+W32_DoesFileExist(String8 path)
 {
-    b32 found = GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
+    b32 found = GetFileAttributesA(W32_FrameCStringFromString(path)) != INVALID_FILE_ATTRIBUTES;
     return found;
 }
 
 internal b32
-W32_DoesDirectoryExist(char *path)
+W32_DoesDirectoryExist(String8 path)
 {
-    DWORD file_attributes = GetFileAttributesA(path);
+    DWORD file_attributes = GetFileAttributesA(W32_FrameCStringFromString(path));
     b32 found = (file_attributes != INVALID_FILE_ATTRIBUTES &&
                  !!(file_attributes & FILE_ATTRIBUTE_DIRECTORY));
     return found;
 }
 
 internal b32
-W32_CopyFile(char *dest, char *source)
+W32_CopyFile(String8 dest, String8 source)
 {
     b32 success = 0;
-    success = CopyFile(source, dest, 0);
+    success = CopyFile(W32_FrameCStringFromString(source), W32_FrameCStringFromString(dest), 0);
     return success;
 }
 
 internal OS_DirectoryList
-W32_DirectoryListLoad(M_Arena *arena, char *path, i32 flags)
+W32_DirectoryListLoad(M_Arena *arena, String8 path, i32 flags)
 {
     OS_DirectoryList list = {0};
     

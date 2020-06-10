@@ -171,6 +171,7 @@ struct OS_State
     
     // NOTE(rjf): Memory
     M_Arena permanent_arena;
+    M_Arena frame_arena;
     
     // NOTE(rjf): Options
     volatile b32 quit;
@@ -198,16 +199,16 @@ struct OS_State
     void (*Commit)(void *memory, u64 size);
     void (*Decommit)(void *memory, u64 size);
     void (*OutputError)(char *error_type, char *error_format, ...);
-    void (*SaveToFile)(char *path, void *data, u32 data_len);
-    void (*AppendToFile)(char *path, void *data, u32 data_len);
-    void (*LoadEntireFile)(M_Arena *arena, char *path, void **data, u32 *data_len);
-    char *(*LoadEntireFileAndNullTerminate)(M_Arena *arena, char *path);
-    void (*DeleteFile)(char *path);
-    b32 (*MakeDirectory)(char *path);
-    b32 (*DoesFileExist)(char *path);
-    b32 (*DoesDirectoryExist)(char *path);
-    b32 (*CopyFile)(char *dest, char *source);
-    OS_DirectoryList (*ListDirectory)(M_Arena *arena, char *path, i32 flags);
+    void (*SaveToFile)(String8 path, void *data, u32 data_len);
+    void (*AppendToFile)(String8 path, void *data, u32 data_len);
+    void (*LoadEntireFile)(M_Arena *arena, String8 path, void **data, u32 *data_len);
+    char *(*LoadEntireFileAndNullTerminate)(M_Arena *arena, String8 path);
+    void (*DeleteFile)(String8 path);
+    b32 (*MakeDirectory)(String8 path);
+    b32 (*DoesFileExist)(String8 path);
+    b32 (*DoesDirectoryExist)(String8 path);
+    b32 (*CopyFile)(String8 dest, String8 source);
+    OS_DirectoryList (*ListDirectory)(M_Arena *arena, String8 path, i32 flags);
     f32 (*GetTime)(void);
     u64 (*GetCycles)(void);
     void (*ResetCursor)(void);

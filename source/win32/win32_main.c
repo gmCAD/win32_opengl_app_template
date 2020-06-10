@@ -531,6 +531,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         global_os.RefreshScreen                  = W32_OpenGLRefreshScreen;
         
         global_os.permanent_arena = M_ArenaInitialize();
+        global_os.frame_arena = M_ArenaInitialize();
     }
     
     // NOTE(rjf): OpenGL initialization
@@ -554,6 +555,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
     while(!global_os.quit)
     {
         W32_TimerBeginFrame(&global_win32_timer);
+        M_ArenaClear(&os->frame_arena);
         
         // NOTE(rjf): Update Windows events
         {

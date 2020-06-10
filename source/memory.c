@@ -29,6 +29,14 @@ M_ArenaPush(M_Arena *arena, u64 size)
     return memory;
 }
 
+internal void *
+M_ArenaPushZero(M_Arena *arena, u64 size)
+{
+    void *memory = M_ArenaPush(arena, size);
+    MemorySet(memory, 0, size);
+    return memory;
+}
+
 internal void
 M_ArenaPop(M_Arena *arena, u64 size)
 {
