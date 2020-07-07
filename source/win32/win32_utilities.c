@@ -27,32 +27,23 @@ Win32HeapFree(void *data)
 internal void
 Win32OutputError(char *title, char *format, ...)
 {
-    local_persist volatile LONG locked = 0;
+    va_list args;
+    va_start(args, format);
+    u32 required_characters = vsnprintf(0, 0, format, args)+1;
+    va_end(args);
     
-    while(locked);
-    InterlockedExchange(&locked, 1);
+    char text[4096] = {0};
+    if(required_characters > 4096)
     {
-        va_list args;
-        va_start(args, format);
-        u32 required_characters = vsnprintf(0, 0, format, args)+1;
-        va_end(args);
-        
-        local_persist char text[4096] = {0};
-        
-        if(required_characters > 4096)
-        {
-            required_characters = 4096;
-        }
-        
-        va_start(args, format);
-        vsnprintf(text, required_characters, format, args);
-        va_end(args);
-        
-        text[required_characters-1] = 0;
-        
-        MessageBoxA(0, text, title, MB_OK);
+        required_characters = 4096;
     }
-    InterlockedExchange(&locked, 0);
+    
+    va_start(args, format);
+    vsnprintf(text, required_characters, format, args);
+    va_end(args);
+    
+    text[required_characters-1] = 0;
+    MessageBoxA(0, text, title, MB_OK);
 }
 
 internal void
