@@ -16,7 +16,7 @@ XINPUT_SET_STATE(XInputSetStateStub)
 global XInputSetStateProc *XInputSetStateProcPtr = XInputSetStateStub;
 
 internal void
-Win32LoadXInput(void)
+W32_LoadXInput(void)
 {
     XInputSetStateProcPtr = XInputSetStateStub;
     XInputGetStateProcPtr = XInputGetStateStub;
@@ -38,9 +38,9 @@ Win32LoadXInput(void)
 }
 
 internal void
-Win32UpdateXInput(Platform *platform)
+W32_UpdateXInput(void)
 {
-    for(u32 i = 0; i < Win32_MaxGamepads; ++i)
+    for(u32 i = 0; i < W32_MAX_GAMEPADS; ++i)
     {
         if(i < XUSER_MAX_COUNT)
         {
@@ -51,7 +51,7 @@ Win32UpdateXInput(Platform *platform)
                 global_gamepads[i].connected = 1;
                 XINPUT_GAMEPAD *pad = &controller_state.Gamepad;
                 
-                for(u32 j = 0; j < Win32_MaxGamepads; ++j)
+                for(u32 j = 0; j < W32_MAX_GAMEPADS; ++j)
                 {
                     global_gamepads[i].button_states[j] = 0;
                 }

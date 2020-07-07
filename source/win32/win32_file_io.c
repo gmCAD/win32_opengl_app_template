@@ -1,6 +1,15 @@
 
+internal char *
+W32_FrameCStringFromString(String8 string)
+{
+    char *buffer = 0;
+    buffer = M_ArenaPushZero(&os->frame_arena, string.size+1);
+    MemoryCopy(buffer, string.str, string.size);
+    return buffer;
+}
+
 internal void
-Win32SaveToFile(char *path, void *data, u32 data_len)
+W32_SaveToFile(String8 path, void *data, u64 data_len)
 {
     HANDLE file = {0};
     {
@@ -15,7 +24,7 @@ Win32SaveToFile(char *path, void *data, u32 data_len)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFile(path,
+        if((file = CreateFile(W32_FrameCStringFromString(path),
                               desired_access,
                               share_mode,
                               &security_attributes,
@@ -34,13 +43,13 @@ Win32SaveToFile(char *path, void *data, u32 data_len)
         }
         else
         {
-            Win32OutputError("File I/O Error", "Could not save to \"%s\"", path);
+            W32_OutputError("File I/O Error", "Could not save to \"%s\"", path);
         }
     }
 }
 
 internal void
-Win32AppendToFile(char *path, void *data, u32 data_len)
+W32_AppendToFile(String8 path, void *data, u64 data_len)
 {
     HANDLE file = {0};
     {
@@ -55,7 +64,7 @@ Win32AppendToFile(char *path, void *data, u32 data_len)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFileA(path,
+        if((file = CreateFileA(W32_FrameCStringFromString(path),
                                desired_access,
                                share_mode,
                                &security_attributes,
@@ -75,13 +84,13 @@ Win32AppendToFile(char *path, void *data, u32 data_len)
         }
         else
         {
-            Win32OutputError("File I/O Error", "Could not save to \"%s\"", path);
+            W32_OutputError("File I/O Error", "Could not save to \"%s\"", path);
         }
     }
 }
 
 internal void
-Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
+W32_LoadEntireFile(M_Arena *arena, String8 path, void **data, u64 *data_len)
 {
     *data = 0;
     *data_len = 0;
@@ -100,13 +109,13 @@ Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFile(path, desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
+        if((file = CreateFile(W32_FrameCStringFromString(path), desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
         {
             
             DWORD read_bytes = GetFileSize(file, 0);
             if(read_bytes)
             {
-                void *read_data = PushArray(arena, u8, read_bytes+1);
+                void *read_data = M_ArenaPush(arena, read_bytes+1);
                 DWORD bytes_read = 0;
                 OVERLAPPED overlapped = {0};
                 
@@ -115,7 +124,7 @@ Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
                 ((u8 *)read_data)[read_bytes] = 0;
                 
                 *data = read_data;
-                *data_len = (u32)bytes_read;
+                *data_len = (u64)bytes_read;
             }
             CloseHandle(file);
         }
@@ -123,7 +132,7 @@ Win32LoadEntireFile(MemoryArena *arena, char *path, void **data, u32 *data_len)
 }
 
 internal char *
-Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
+W32_LoadEntireFileAndNullTerminate(M_Arena *arena, String8 path)
 {
     char *result = 0;
     
@@ -140,13 +149,13 @@ Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
         DWORD flags_and_attributes = 0;
         HANDLE template_file = 0;
         
-        if((file = CreateFile(path, desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
+        if((file = CreateFile(W32_FrameCStringFromString(path), desired_access, share_mode, &security_attributes, creation_disposition, flags_and_attributes, template_file)) != INVALID_HANDLE_VALUE)
         {
             
             DWORD read_bytes = GetFileSize(file, 0);
             if(read_bytes)
             {
-                result = PushArray(arena, char, read_bytes+1);
+                result = M_ArenaPush(arena, read_bytes+1);
                 DWORD bytes_read = 0;
                 OVERLAPPED overlapped = {0};
                 
@@ -158,7 +167,7 @@ Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
         }
         else
         {
-            Win32OutputError("File I/O Error", "Could not read from \"%s\"", path);
+            W32_OutputError("File I/O Error", "Could not read from \"%s\"", path);
         }
     }
     
@@ -166,22 +175,22 @@ Win32LoadEntireFileAndNullTerminate(MemoryArena *arena, char *path)
 }
 
 internal void
-Win32FreeFileMemory(void *data)
+W32_FreeFileMemory(void *data)
 {
-    Win32HeapFree(data);
+    W32_HeapFree(data);
 }
 
 internal void
-Win32DeleteFile(char *path)
+W32_DeleteFile(String8 path)
 {
-    DeleteFileA(path);
+    DeleteFileA(W32_FrameCStringFromString(path));
 }
 
 internal b32
-Win32MakeDirectory(char *path)
+W32_MakeDirectory(String8 path)
 {
     b32 result = 1;
-    if(!CreateDirectoryA(path, 0))
+    if(!CreateDirectoryA(W32_FrameCStringFromString(path), 0))
     {
         result = 0;
     }
@@ -189,35 +198,33 @@ Win32MakeDirectory(char *path)
 }
 
 internal b32
-Win32DoesFileExist(char *path)
+W32_DoesFileExist(String8 path)
 {
-    b32 found = GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
+    b32 found = GetFileAttributesA(W32_FrameCStringFromString(path)) != INVALID_FILE_ATTRIBUTES;
     return found;
 }
 
 internal b32
-Win32DoesDirectoryExist(char *path)
+W32_DoesDirectoryExist(String8 path)
 {
-    DWORD file_attributes = GetFileAttributesA(path);
+    DWORD file_attributes = GetFileAttributesA(W32_FrameCStringFromString(path));
     b32 found = (file_attributes != INVALID_FILE_ATTRIBUTES &&
                  !!(file_attributes & FILE_ATTRIBUTE_DIRECTORY));
     return found;
 }
 
 internal b32
-Win32CopyFile(char *dest, char *source)
+W32_CopyFile(String8 dest, String8 source)
 {
     b32 success = 0;
-    success = CopyFile(source, dest, 0);
+    success = CopyFile(W32_FrameCStringFromString(source), W32_FrameCStringFromString(dest), 0);
     return success;
 }
 
-internal PlatformDirectoryList
-Win32PlatformDirectoryListLoad(MemoryArena *arena, char *path, i32 flags)
+internal OS_DirectoryList
+W32_DirectoryListLoad(M_Arena *arena, String8 path, i32 flags)
 {
-    PlatformDirectoryList list = {0};
-    
-    
+    OS_DirectoryList list = {0};
     
     return list;
 }

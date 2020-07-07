@@ -18,9 +18,14 @@
 // NOTE(rjf): Headers
 #include "program_options.h"
 #include "language_layer.h"
-#include "platform.h"
+#include "memory.h"
+#include "strings.h"
+#include "os.h"
 #include "win32_timer.h"
 #include "language_layer.c"
+#include "memory.c"
+#include "strings.c"
+#include "os.c"
 
 // NOTE(rjf): Globals
 global char global_executable_path[256];
@@ -28,13 +33,13 @@ global char global_executable_directory[256];
 global char global_working_directory[256];
 global char global_app_dll_path[256];
 global char global_temp_app_dll_path[256];
-global Platform global_platform;
+global OS_State global_os;
 global HDC global_device_context;
 global HINSTANCE global_instance_handle;
-global Win32Timer global_win32_timer = {0};
-#define Win32_MaxGamepads 16
-typedef struct Win32GamepadInput Win32GamepadInput;
-struct Win32GamepadInput
+global W32_Timer global_win32_timer = {0};
+#define W32_MAX_GAMEPADS 16
+typedef struct W32_GamepadInput W32_GamepadInput;
+struct W32_GamepadInput
 {
     b32 connected;
     v2 joystick_1;
@@ -43,7 +48,7 @@ struct Win32GamepadInput
     f32 trigger_right;
     i32 button_states[GamepadButton_Max];
 };
-Win32GamepadInput global_gamepads[Win32_MaxGamepads];
+W32_GamepadInput global_gamepads[W32_MAX_GAMEPADS];
 
 
 // NOTE(rjf): Implementations
@@ -57,19 +62,19 @@ Win32GamepadInput global_gamepads[Win32_MaxGamepads];
 
 //~
 
-typedef enum Win32CursorStyle
+typedef enum W32_CursorStyle
 {
-    Win32CursorStyle_Normal,
-    Win32CursorStyle_HorizontalResize,
-    Win32CursorStyle_VerticalResize,
-    Win32CursorStyle_IBar,
+    W32_CursorStyle_Normal,
+    W32_CursorStyle_HorizontalResize,
+    W32_CursorStyle_VerticalResize,
+    W32_CursorStyle_IBar,
 }
-Win32CursorStyle;
+W32_CursorStyle;
 
-global Win32CursorStyle global_cursor_style = 0;
+global W32_CursorStyle global_cursor_style = 0;
 
 internal v2
-Win32GetMousePosition(HWND window)
+W32_GetMousePosition(HWND window)
 {
     v2 result = {0};
     POINT mouse;
@@ -81,7 +86,7 @@ Win32GetMousePosition(HWND window)
 }
 
 internal LRESULT
-Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param)
+W32_WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param)
 {
     LRESULT result = 0;
     
@@ -103,34 +108,34 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
     
     if(message == WM_CLOSE || message == WM_DESTROY || message == WM_QUIT)
     {
-        global_platform.quit = 1;
+        global_os.quit = 1;
         result = 0;
     }
     else if(message == WM_LBUTTONDOWN)
     {
-        PlatformPushEvent(MousePressEvent(MouseButton_Left, global_platform.mouse_position));
+        OS_PushEvent(OS_MousePressEvent(MouseButton_Left, global_os.mouse_position));
     }
     else if(message == WM_LBUTTONUP)
     {
-        PlatformPushEvent(MouseReleaseEvent(MouseButton_Left, global_platform.mouse_position));
+        OS_PushEvent(OS_MouseReleaseEvent(MouseButton_Left, global_os.mouse_position));
     }
     else if(message == WM_RBUTTONDOWN)
     {
-        PlatformPushEvent(MousePressEvent(MouseButton_Right, global_platform.mouse_position));
+        OS_PushEvent(OS_MousePressEvent(MouseButton_Right, global_os.mouse_position));
     }
     else if(message == WM_RBUTTONUP)
     {
-        PlatformPushEvent(MouseReleaseEvent(MouseButton_Right, global_platform.mouse_position));
+        OS_PushEvent(OS_MouseReleaseEvent(MouseButton_Right, global_os.mouse_position));
     }
     else if(message == WM_MOUSEMOVE)
     {
         i16 x_position = LOWORD(l_param);
         i16 y_position = HIWORD(l_param);
-        v2 last_mouse = global_platform.mouse_position;
-        global_platform.mouse_position = Win32GetMousePosition(window_handle);
-        PlatformPushEvent(MouseMoveEvent(global_platform.mouse_position,
-                                         v2(global_platform.mouse_position.x - last_mouse.x,
-                                            global_platform.mouse_position.y - last_mouse.y)));
+        v2 last_mouse = global_os.mouse_position;
+        global_os.mouse_position = W32_GetMousePosition(window_handle);
+        OS_PushEvent(OS_MouseMoveEvent(global_os.mouse_position,
+                                       v2(global_os.mouse_position.x - last_mouse.x,
+                                          global_os.mouse_position.y - last_mouse.y)));
         
         if(mouse_hover_active_because_windows_makes_me_cry == 0)
         {
@@ -152,37 +157,37 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
     else if(message == WM_MOUSEWHEEL)
     {
         i16 wheel_delta = HIWORD(w_param);
-        PlatformPushEvent(MouseScrollEvent(v2(0, (f32)wheel_delta), modifiers));
+        OS_PushEvent(OS_MouseScrollEvent(v2(0, (f32)wheel_delta), modifiers));
     }
     else if(message == WM_MOUSEHWHEEL)
     {
         i16 wheel_delta = HIWORD(w_param);
-        PlatformPushEvent(MouseScrollEvent(v2((f32)wheel_delta, 0), modifiers));
+        OS_PushEvent(OS_MouseScrollEvent(v2((f32)wheel_delta, 0), modifiers));
     }
     else if(message == WM_SETCURSOR)
     {
         
-        if(global_platform.mouse_position.x >= 1 && global_platform.mouse_position.x <= global_platform.window_size.x-1 &&
-           global_platform.mouse_position.y >= 1 && global_platform.mouse_position.y <= global_platform.window_size.y-1 && mouse_hover_active_because_windows_makes_me_cry)
+        if(global_os.mouse_position.x >= 1 && global_os.mouse_position.x <= global_os.window_size.x-1 &&
+           global_os.mouse_position.y >= 1 && global_os.mouse_position.y <= global_os.window_size.y-1 && mouse_hover_active_because_windows_makes_me_cry)
         {
             switch(global_cursor_style)
             {
-                case Win32CursorStyle_HorizontalResize:
+                case W32_CursorStyle_HorizontalResize:
                 {
                     SetCursor(LoadCursorA(0, IDC_SIZEWE));
                     break;
                 }
-                case Win32CursorStyle_VerticalResize:
+                case W32_CursorStyle_VerticalResize:
                 {
                     SetCursor(LoadCursorA(0, IDC_SIZENS));
                     break;
                 }
-                case Win32CursorStyle_IBar:
+                case W32_CursorStyle_IBar:
                 {
                     SetCursor(LoadCursorA(0, IDC_IBEAM));
                     break;
                 }
-                case Win32CursorStyle_Normal:
+                case W32_CursorStyle_Normal:
                 {
                     SetCursor(LoadCursorA(0, IDC_ARROW));
                     break;
@@ -327,11 +332,11 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
         
         if(is_down)
         {
-            PlatformPushEvent(KeyPressEvent(key_input, modifiers));
+            OS_PushEvent(OS_KeyPressEvent(key_input, modifiers));
         }
         else
         {
-            PlatformPushEvent(KeyReleaseEvent(key_input, modifiers));
+            OS_PushEvent(OS_KeyReleaseEvent(key_input, modifiers));
         }
         
         result = DefWindowProc(window_handle, message, w_param, l_param);
@@ -342,7 +347,7 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
         if(char_input >= 32 && char_input != VK_RETURN && char_input != VK_ESCAPE &&
            char_input != 127)
         {
-            PlatformPushEvent(CharacterInputEvent(char_input));
+            OS_PushEvent(OS_CharacterInputEvent(char_input));
         }
     }
     else
@@ -354,37 +359,37 @@ Win32WindowProc(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param
 }
 
 internal f32
-Win32GetTime(void)
+W32_GetTime(void)
 {
-    Win32Timer *timer = &global_win32_timer;
+    W32_Timer *timer = &global_win32_timer;
     LARGE_INTEGER current_time;
     QueryPerformanceCounter(&current_time);
-    return global_platform.current_time + (f32)(current_time.QuadPart - timer->begin_frame.QuadPart) / (f32)timer->counts_per_second.QuadPart;
+    return global_os.current_time + (f32)(current_time.QuadPart - timer->begin_frame.QuadPart) / (f32)timer->counts_per_second.QuadPart;
 }
 
 internal u64
-Win32GetCycles(void)
+W32_GetCycles(void)
 {
     u64 result = __rdtsc();
     return result;
 }
 
 internal void
-Win32ResetCursor(void)
+W32_ResetCursor(void)
 {
-    global_cursor_style = Win32CursorStyle_Normal;
+    global_cursor_style = W32_CursorStyle_Normal;
 }
 
 internal void
-Win32SetCursorToHorizontalResize(void)
+W32_SetCursorToHorizontalResize(void)
 {
-    global_cursor_style = Win32CursorStyle_HorizontalResize;
+    global_cursor_style = W32_CursorStyle_HorizontalResize;
 }
 
 internal void
-Win32SetCursorToVerticalResize(void)
+W32_SetCursorToVerticalResize(void)
 {
-    global_cursor_style = Win32CursorStyle_VerticalResize;
+    global_cursor_style = W32_CursorStyle_VerticalResize;
 }
 
 int
@@ -392,9 +397,9 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
 {
     global_instance_handle = instance;
     
-    Win32TimerInit(&global_win32_timer);
-    Win32AppCode win32_game_code = {0};
-    Win32SoundOutput win32_sound_output = {0};
+    W32_TimerInit(&global_win32_timer);
+    W32_AppCode win32_game_code = {0};
+    W32_SoundOutput win32_sound_output = {0};
     
     // NOTE(rjf): Calculate executable name and path to DLL
     {
@@ -417,8 +422,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         
         // NOTE(rjf): Create DLL filenames
         {
-            wsprintf(global_app_dll_path, "%s%s.dll", global_executable_directory, ProgramOption_ProgramFilename);
-            wsprintf(global_temp_app_dll_path, "%stemp_%s.dll", global_executable_directory, ProgramOption_ProgramFilename);
+            wsprintf(global_app_dll_path, "%s%s.dll", global_executable_directory, PROGRAM_FILENAME);
+            wsprintf(global_temp_app_dll_path, "%stemp_%s.dll", global_executable_directory, PROGRAM_FILENAME);
         }
         
         GetCurrentDirectory(sizeof(global_working_directory), global_working_directory);
@@ -427,7 +432,7 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
     WNDCLASS window_class = {0};
     {
         window_class.style = CS_HREDRAW | CS_VREDRAW;
-        window_class.lpfnWndProc = Win32WindowProc;
+        window_class.lpfnWndProc = W32_WindowProc;
         window_class.hInstance = instance;
         window_class.lpszClassName = "ApplicationWindowClass";
         window_class.hCursor = LoadCursor(0, IDC_ARROW);
@@ -436,30 +441,30 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
     if(!RegisterClass(&window_class))
     {
         // NOTE(rjf): ERROR: Window class registration failure
-        Win32OutputError("Fatal Error", "Window class registration failure.");
+        W32_OutputError("Fatal Error", "Window class registration failure.");
         goto quit;
     }
     
-    HWND window_handle = CreateWindow("ApplicationWindowClass", ProgramOption_WindowTitle,
+    HWND window_handle = CreateWindow("ApplicationWindowClass", WINDOW_TITLE,
                                       WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                                      ProgramOption_DefaultWindowWidth,
-                                      ProgramOption_DefaultWindowHeight,
+                                      DEFAULT_WINDOW_WIDTH,
+                                      DEFAULT_WINDOW_HEIGHT,
                                       0, 0, instance, 0);
     
     if(!window_handle)
     {
         // NOTE(rjf): ERROR: Window creation failure
-        Win32OutputError("Fatal Error", "Window creation failure.");
+        W32_OutputError("Fatal Error", "Window creation failure.");
         goto quit;
     }
     
     // NOTE(rjf): Load application code
-    Win32AppCode win32_app_code = {0};
+    W32_AppCode win32_app_code = {0};
     {
-        if(!Win32AppCodeLoad(&win32_app_code))
+        if(!W32_AppCodeLoad(&win32_app_code))
         {
             // NOTE(rjf): ERROR: Application code load failure
-            Win32OutputError("Fatal Error", "Application code load failure.");
+            W32_OutputError("Fatal Error", "Application code load failure.");
             goto quit;
         }
     }
@@ -469,8 +474,8 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         win32_sound_output.channels = 2;
         win32_sound_output.samples_per_second = 48000;
         win32_sound_output.latency_frame_count = 48000;
-        Win32LoadWASAPI();
-        Win32InitWASAPI(&win32_sound_output);
+        W32_LoadWASAPI();
+        W32_InitWASAPI(&win32_sound_output);
     }
     
     // NOTE(rjf): Find refresh rate
@@ -485,76 +490,77 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
     
     // NOTE(rjf): Initialize platform
     {
-        global_platform.executable_folder_absolute_path = String8FromCString(global_executable_directory);
-        global_platform.executable_absolute_path = String8FromCString(global_executable_path);
-        global_platform.working_directory_path = String8FromCString(global_working_directory);
+        os = &global_os;
         
-        u32 permanent_storage_size       = ProgramOption_DefaultPermanentStorageSize;
-        void *permanent_storage          = VirtualAlloc(0, permanent_storage_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-        global_platform.permanent_arena  = MemoryArenaInit(permanent_storage, permanent_storage_size);
-        u32 scratch_storage_size         = ProgramOption_DefaultScratchStorageSize;
-        void *scratch_storage            = VirtualAlloc(0, scratch_storage_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-        global_platform.scratch_arena    = MemoryArenaInit(scratch_storage, scratch_storage_size);
+        global_os.executable_folder_absolute_path = String8FromCString(global_executable_directory);
+        global_os.executable_absolute_path = String8FromCString(global_executable_path);
+        global_os.working_directory_path = String8FromCString(global_working_directory);
         
-        global_platform.quit                      = 0;
-        global_platform.vsync                     = 1;
-        global_platform.fullscreen                = 0;
-        global_platform.window_size.x             = ProgramOption_DefaultWindowWidth;
-        global_platform.window_size.y             = ProgramOption_DefaultWindowHeight;
-        global_platform.current_time              = 0.f;
-        global_platform.target_frames_per_second  = refresh_rate;
+        global_os.quit                      = 0;
+        global_os.vsync                     = 1;
+        global_os.fullscreen                = 0;
+        global_os.window_size.x             = DEFAULT_WINDOW_WIDTH;
+        global_os.window_size.y             = DEFAULT_WINDOW_HEIGHT;
+        global_os.current_time              = 0.f;
+        global_os.target_frames_per_second  = refresh_rate;
         
-        global_platform.sample_out = Win32HeapAlloc(win32_sound_output.samples_per_second * sizeof(f32) * 2);
-        global_platform.samples_per_second = win32_sound_output.samples_per_second;
+        global_os.sample_out = W32_HeapAlloc(win32_sound_output.samples_per_second * sizeof(f32) * 2);
+        global_os.samples_per_second = win32_sound_output.samples_per_second;
         
-        global_platform.OutputError                    = Win32OutputError;
-        global_platform.SaveToFile                     = Win32SaveToFile;
-        global_platform.AppendToFile                   = Win32AppendToFile;
-        global_platform.LoadEntireFile                 = Win32LoadEntireFile;
-        global_platform.LoadEntireFileAndNullTerminate = Win32LoadEntireFileAndNullTerminate;
-        global_platform.DeleteFile                     = Win32DeleteFile;
-        global_platform.MakeDirectory                  = Win32MakeDirectory;
-        global_platform.DoesFileExist                  = Win32DoesFileExist;
-        global_platform.DoesDirectoryExist             = Win32DoesDirectoryExist;
-        global_platform.CopyFile                       = Win32CopyFile;
-        global_platform.ListDirectory                  = Win32PlatformDirectoryListLoad;
-        global_platform.GetTime                        = Win32GetTime;
-        global_platform.GetCycles                      = Win32GetCycles;
-        global_platform.ResetCursor                    = Win32ResetCursor;
-        global_platform.SetCursorToHorizontalResize    = Win32SetCursorToHorizontalResize;
-        global_platform.SetCursorToVerticalResize      = Win32SetCursorToVerticalResize;
-        global_platform.LoadOpenGLProcedure            = Win32LoadOpenGLProcedure;
-        global_platform.RefreshScreen                  = Win32OpenGLRefreshScreen;
+        global_os.Reserve                        = W32_Reserve;
+        global_os.Release                        = W32_Release;
+        global_os.Commit                         = W32_Commit;
+        global_os.Decommit                       = W32_Decommit;
+        global_os.OutputError                    = W32_OutputError;
+        global_os.SaveToFile                     = W32_SaveToFile;
+        global_os.AppendToFile                   = W32_AppendToFile;
+        global_os.LoadEntireFile                 = W32_LoadEntireFile;
+        global_os.LoadEntireFileAndNullTerminate = W32_LoadEntireFileAndNullTerminate;
+        global_os.DeleteFile                     = W32_DeleteFile;
+        global_os.MakeDirectory                  = W32_MakeDirectory;
+        global_os.DoesFileExist                  = W32_DoesFileExist;
+        global_os.DoesDirectoryExist             = W32_DoesDirectoryExist;
+        global_os.CopyFile                       = W32_CopyFile;
+        global_os.ListDirectory                  = W32_DirectoryListLoad;
+        global_os.GetTime                        = W32_GetTime;
+        global_os.GetCycles                      = W32_GetCycles;
+        global_os.ResetCursor                    = W32_ResetCursor;
+        global_os.SetCursorToHorizontalResize    = W32_SetCursorToHorizontalResize;
+        global_os.SetCursorToVerticalResize      = W32_SetCursorToVerticalResize;
+        global_os.LoadOpenGLProcedure            = W32_LoadOpenGLProcedure;
+        global_os.RefreshScreen                  = W32_OpenGLRefreshScreen;
         
-        platform = &global_platform;
+        global_os.permanent_arena = M_ArenaInitialize();
+        global_os.frame_arena = M_ArenaInitialize();
     }
     
     // NOTE(rjf): OpenGL initialization
     {
         global_device_context = GetDC(window_handle);
-        if(!Win32InitOpenGL(&global_device_context, global_instance_handle))
+        if(!W32_InitOpenGL(&global_device_context, global_instance_handle))
         {
-            Win32OutputError("Fatal Error", "OpenGL initialization failure.");
+            W32_OutputError("Fatal Error", "OpenGL initialization failure.");
             goto quit;
         }
     }
     
-    Win32LoadXInput();
+    W32_LoadXInput();
     
-    win32_app_code.PermanentLoad(&global_platform);
-    win32_app_code.HotLoad(&global_platform);
+    win32_app_code.PermanentLoad(&global_os);
+    win32_app_code.HotLoad(&global_os);
     
     ShowWindow(window_handle, n_show_cmd);
     UpdateWindow(window_handle);
     
-    while(!global_platform.quit)
+    while(!global_os.quit)
     {
-        Win32TimerBeginFrame(&global_win32_timer);
+        W32_TimerBeginFrame(&global_win32_timer);
+        M_ArenaClear(&os->frame_arena);
         
         // NOTE(rjf): Update Windows events
         {
             MSG message;
-            if(global_platform.wait_for_events_to_update && !global_platform.pump_events)
+            if(global_os.wait_for_events_to_update && !global_os.pump_events)
             {
                 WaitMessage();
             }
@@ -570,75 +576,74 @@ WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR lp_cmd_line, int n_sh
         {
             RECT client_rect;
             GetClientRect(window_handle, &client_rect);
-            global_platform.window_size.x = client_rect.right - client_rect.left;
-            global_platform.window_size.y = client_rect.bottom - client_rect.top;
+            global_os.window_size.x = client_rect.right - client_rect.left;
+            global_os.window_size.y = client_rect.bottom - client_rect.top;
         }
         
         // NOTE(rjf): Update input data (post-event)
-        PlatformBeginFrame();
+        OS_BeginFrame();
         {
             POINT mouse;
             GetCursorPos(&mouse);
             ScreenToClient(window_handle, &mouse);
-            Win32UpdateXInput(&global_platform);
-            global_platform.pump_events = 0;
+            W32_UpdateXInput();
+            global_os.pump_events = 0;
         }
         
         // NOTE(rjf): Find how much sound to write and where
         if(win32_sound_output.initialized)
         {
-            global_platform.sample_count_to_output = 0;
+            global_os.sample_count_to_output = 0;
             UINT32 sound_padding_size;
             if(SUCCEEDED(win32_sound_output.audio_client->lpVtbl->GetCurrentPadding(win32_sound_output.audio_client, &sound_padding_size)))
             {
-                global_platform.samples_per_second = win32_sound_output.samples_per_second;
-                global_platform.sample_count_to_output = (u32)(win32_sound_output.latency_frame_count - sound_padding_size);
-                if(global_platform.sample_count_to_output > win32_sound_output.latency_frame_count)
+                global_os.samples_per_second = win32_sound_output.samples_per_second;
+                global_os.sample_count_to_output = (u32)(win32_sound_output.latency_frame_count - sound_padding_size);
+                if(global_os.sample_count_to_output > win32_sound_output.latency_frame_count)
                 {
-                    global_platform.sample_count_to_output = win32_sound_output.latency_frame_count;
+                    global_os.sample_count_to_output = win32_sound_output.latency_frame_count;
                 }
             }
             
             for(u32 i = 0; i < win32_sound_output.buffer_frame_count; ++i)
             {
-                global_platform.sample_out[i] = 0;
+                global_os.sample_out[i] = 0;
             }
         }
         
         // NOTE(rjf): Call into the app layer to update
         {
-            b32 last_fullscreen = global_platform.fullscreen;
+            b32 last_fullscreen = global_os.fullscreen;
             
-            MemoryArenaClear(&global_platform.scratch_arena);
             win32_app_code.Update();
             
             // NOTE(rjf): Update fullscreen if necessary
-            if(last_fullscreen != global_platform.fullscreen)
+            if(last_fullscreen != global_os.fullscreen)
             {
-                Win32ToggleFullscreen(window_handle);
+                W32_ToggleFullscreen(window_handle);
             }
             
             // NOTE(rjf): Fill sound buffer with game sound
             if(win32_sound_output.initialized)
             {
-                Win32FillSoundBuffer(global_platform.sample_count_to_output, global_platform.sample_out, &win32_sound_output);
+                W32_FillSoundBuffer(global_os.sample_count_to_output, global_os.sample_out, &win32_sound_output);
             }
         }
         
         // NOTE(rjf): Post-update platform data update
         {
-            PlatformEndFrame();
+            OS_EndFrame();
         }
         
-        Win32AppCodeUpdate(&win32_app_code);
+        W32_AppCodeUpdate(&win32_app_code);
         
-        Win32TimerEndFrame(&global_win32_timer, 1000.0 * (1.0 / (f64)global_platform.target_frames_per_second));
+        W32_TimerEndFrame(&global_win32_timer, 1000.0 * (1.0 / (f64)global_os.target_frames_per_second));
     }
     
     ShowWindow(window_handle, SW_HIDE);
     
-    Win32AppCodeUnload(&win32_app_code);
-    Win32CleanUpOpenGL(&global_device_context);
+    W32_AppCodeUnload(&win32_app_code);
+    W32_CleanUpOpenGL(&global_device_context);
     
     quit:;
     

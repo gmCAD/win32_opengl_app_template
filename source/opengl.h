@@ -14,6 +14,6 @@
 internal void
 LoadAllOpenGLProcedures(void)
 {
-#define GLProc(name, type) gl##name = platform->LoadOpenGLProcedure("gl" #name);
+#define GLProc(name, type) gl##name = os->LoadOpenGLProcedure("gl" #name);
 #include "opengl_procedure_list.inc"
 }

@@ -1,25 +1,30 @@
 #include "language_layer.h"
-#include "platform.h"
+#include "memory.h"
+#include "strings.h"
+#include "os.h"
 #include "opengl.h"
-#include "language_layer.c"
 
-AppEntryPoint
-AppEntryPoint_PermanentLoad(PermanentLoad)
+#include "language_layer.c"
+#include "memory.c"
+#include "strings.c"
+#include "os.c"
+
+APP_PERMANENT_LOAD
 {
-    platform = platform_;
+    os = os_;
     LoadAllOpenGLProcedures();
 }
 
-AppEntryPoint AppEntryPoint_HotLoad(HotLoad)
+APP_HOT_LOAD
 {
-    platform = platform_;
+    os = os_;
 }
 
-AppEntryPoint AppEntryPoint_HotUnload(HotUnload) {}
+APP_HOT_UNLOAD {}
 
-AppEntryPoint AppEntryPoint_Update(Update)
+APP_UPDATE
 {
     glClearColor(1, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    platform->RefreshScreen();
+    os->RefreshScreen();
 }

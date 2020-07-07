@@ -1,5 +1,5 @@
 internal FILETIME
-Win32GetLastWriteTime(char *filename)
+W32_GetLastWriteTime(char *filename)
 {
     FILETIME last_write_time = {0};
     WIN32_FIND_DATA find_data;
@@ -13,19 +13,44 @@ Win32GetLastWriteTime(char *filename)
 }
 
 internal void *
-Win32HeapAlloc(u32 size)
+W32_HeapAlloc(u32 size)
 {
     return HeapAlloc(GetProcessHeap(), 0, size);
 }
 
 internal void
-Win32HeapFree(void *data)
+W32_HeapFree(void *data)
 {
     HeapFree(GetProcessHeap(), 0, data);
 }
 
+internal void *
+W32_Reserve(u64 size)
+{
+    void *memory = VirtualAlloc(0, size, MEM_RESERVE, PAGE_NOACCESS);
+    return memory;
+}
+
 internal void
-Win32OutputError(char *title, char *format, ...)
+W32_Release(void *memory)
+{
+    VirtualFree(memory, 0, MEM_RELEASE);
+}
+
+internal void
+W32_Commit(void *memory, u64 size)
+{
+    VirtualAlloc(memory, size, MEM_COMMIT, PAGE_READWRITE);
+}
+
+internal void
+W32_Decommit(void *memory, u64 size)
+{
+    VirtualFree(memory, size, MEM_DECOMMIT);
+}
+
+internal void
+W32_OutputError(char *title, char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -47,7 +72,7 @@ Win32OutputError(char *title, char *format, ...)
 }
 
 internal void
-Win32ToggleFullscreen(HWND hwnd)
+W32_ToggleFullscreen(HWND hwnd)
 {
     local_persist WINDOWPLACEMENT last_window_placement = {
         sizeof(last_window_placement)

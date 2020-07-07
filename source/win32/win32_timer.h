@@ -1,12 +1,12 @@
 
-typedef struct Win32Timer
+typedef struct W32_Timer
 {
     LARGE_INTEGER counts_per_second;
     LARGE_INTEGER begin_frame;
     b32 sleep_is_granular;
 }
-Win32Timer;
+W32_Timer;
 
-internal b32 Win32TimerInit(Win32Timer *timer);
-internal void Win32TimerBeginFrame(Win32Timer *timer);
-internal void Win32TimerEndFrame(Win32Timer *timer, f64 milliseconds_per_frame);
+internal b32 W32_TimerInit(W32_Timer *timer);
+internal void W32_TimerBeginFrame(W32_Timer *timer);
+internal void W32_TimerEndFrame(W32_Timer *timer, f64 milliseconds_per_frame);
