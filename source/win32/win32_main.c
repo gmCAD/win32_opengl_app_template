@@ -18,6 +18,7 @@
 // NOTE(rjf): Headers
 #include "program_options.h"
 #include "language_layer.h"
+#include "maths.h"
 #include "memory.h"
 #include "strings.h"
 #include "os.h"
