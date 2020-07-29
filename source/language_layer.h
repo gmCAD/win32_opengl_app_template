@@ -29,9 +29,10 @@
 #define local_persist  static
 #define ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
 #define Bytes(n)      (n)
-#define Kilobytes(n)  (Bytes(n)*1024)
-#define Megabytes(n)  (Kilobytes(n)*1024)
-#define Gigabytes(n)  (Megabytes(n)*1024)
+#define Kilobytes(n)  (n << 10)
+#define Megabytes(n)  (n << 20)
+#define Gigabytes(n)  (((u64)n) << 30)
+#define Terabytes(n)  (((u64)n) << 40)
 #define PI (3.1415926535897f)
 
 //~ NOTE(rjf): Base Types
